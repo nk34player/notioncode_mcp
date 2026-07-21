@@ -293,10 +293,16 @@ function Invoke-StartServer {
     Write-Host "    `$env:ANTHROPIC_API_KEY  = 'sk-notioncode'"
     Write-Host "    codex"
     Write-Host ""
-    Write-Host "  Streaming live logs (Press Ctrl+C to stop viewing; server will stay running):"
+    Write-Host "  Streaming live logs (Press Ctrl+C to stop the server):"
     Write-Host "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Host ""
-    Get-Content -LiteralPath $LogFile -Wait -Tail 25
+    try {
+        Get-Content -LiteralPath $LogFile -Wait -Tail 25
+    } finally {
+        Write-Host ""
+        Write-Host "[>] Stopping the unified Node server..."
+        Invoke-StopServer
+    }
 }
 
 # ── Stop server ────────────────────────────────────────────────────────────────
