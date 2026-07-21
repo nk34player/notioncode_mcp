@@ -38,7 +38,7 @@ test("conversation segments persist only hashed identity and no content", async 
 
     const raw = await readFile(filePath, "utf8");
     assert.doesNotMatch(raw, /secret-codex-thread/);
-    assert.equal((await stat(filePath)).mode & 0o777, 0o600);
+    assert.equal((await stat(filePath)).mode & (process.platform === "win32" ? 0o600 : 0o777), 0o600);
     assert.equal(JSON.parse(raw).version, 1);
 
     const restoredStore = new ConversationSegmentStore(filePath);

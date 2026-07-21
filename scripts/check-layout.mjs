@@ -29,11 +29,7 @@ const requiredShared = [
   "scripts/test-codex-app-server.mjs",
   "scripts/check-public-release.mjs",
   "scripts/render-config.test.mjs",
-  "scripts/windows/install.ps1",
-  "scripts/windows/start.ps1",
-  "scripts/windows/status.ps1",
-  "scripts/windows/stop.ps1",
-  "scripts/windows/verify.ps1",
+  "scripts/install-local.ps1",
   "config/opencode.jsonc",
   "state-template/.notionagents/models.json",
 ];

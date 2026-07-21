@@ -3,6 +3,8 @@ import path from "node:path";
 import { atomicWriteJson } from "./files.js";
 
 export const DEFAULT_MODEL_ALIASES = Object.freeze({
+  "gpt-5.6-sol": "orange-mousse",
+  "fable-5": "acai-budino-high",
   "opus-4.8": "ambrosia-tart-high",
   "opus-4.7": "apricot-sorbet-high",
   "opus-4.6": "avocado-froyo-medium",
@@ -34,12 +36,13 @@ export async function loadModelAliases(filePath) {
 
 export function resolveModel(requested, aliases = DEFAULT_MODEL_ALIASES) {
   const raw = String(requested ?? "").trim();
-  if (!raw) return aliases["opus-4.8"];
+  if (!raw) return aliases["gpt-5.6-sol"] || aliases["opus-4.8"];
   if (Object.hasOwn(aliases, raw)) return aliases[raw];
   if (Object.values(aliases).includes(raw)) return raw;
 
   const normalized = raw.toLowerCase().replace(/-\d{8}$/, "");
   if (Object.hasOwn(aliases, normalized)) return aliases[normalized];
+  if (normalized.includes("sol")) return aliases["gpt-5.6-sol"] || aliases["opus-4.8"];
   if (normalized.includes("opus")) return aliases["opus-4.8"];
   if (normalized.includes("sonnet")) return aliases["sonnet-4.6"];
   if (normalized.includes("haiku")) return aliases["haiku-4.5"];

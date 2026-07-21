@@ -11,7 +11,7 @@ export const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 export const DEFAULT_TIMEZONE = "America/Los_Angeles";
-export const DEFAULT_MODEL = "opus-4.8";
+export const DEFAULT_MODEL = "gpt-5.6-sol";
 
 const REQUIRED_FIELDS = ["token_v2", "user_id", "space_id"];
 

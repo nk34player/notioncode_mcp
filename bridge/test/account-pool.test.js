@@ -78,15 +78,15 @@ test("account pool balances requests in round-robin order", async () => {
   assert.deepEqual(selected, ["one", "two", "three", "one"]);
 });
 
-test("all ten accounts are used before rotation repeats", async () => {
-  const names = Array.from({ length: 10 }, (_, index) => `account-${String(index + 1).padStart(2, "0")}`);
+test("all 25 accounts are used before rotation repeats", async () => {
+  const names = Array.from({ length: 25 }, (_, index) => `account-${String(index + 1).padStart(2, "0")}`);
   const { pool } = createPool(names);
   const selected = [];
-  for (let index = 0; index < 11; index += 1) {
+  for (let index = 0; index < 26; index += 1) {
     selected.push(await pool.execute(async (provider) => provider.name));
   }
-  assert.deepEqual(selected.slice(0, 10), names);
-  assert.equal(selected[10], "account-01");
+  assert.deepEqual(selected.slice(0, 25), names);
+  assert.equal(selected[25], "account-01");
 });
 
 test("one account serializes concurrent requests", async () => {
@@ -288,10 +288,10 @@ test("account discovery excludes invalid and duplicate sessions", async () => {
   }
 });
 
-test("account discovery rejects more than ten unique accounts", async () => {
+test("account discovery rejects more than 25 unique accounts", async () => {
   const home = await mkdtemp(path.join(tmpdir(), "notioncode-accounts-"));
   try {
-    for (let index = 0; index < 11; index += 1) {
+    for (let index = 0; index < 26; index += 1) {
       await writeAccount(
         path.join(home, "accounts", `account-${String(index).padStart(2, "0")}.json`),
         `token-${index}`,
@@ -310,7 +310,7 @@ test("extra discovered files are allowed when one is a duplicate", async () => {
   const home = await mkdtemp(path.join(tmpdir(), "notioncode-accounts-"));
   try {
     await writeAccount(path.join(home, "notion_account.json"), "token-0", "user-0");
-    for (let index = 0; index < 10; index += 1) {
+    for (let index = 0; index < 25; index += 1) {
       await writeAccount(
         path.join(home, "accounts", `account-${String(index).padStart(2, "0")}.json`),
         `token-${index}`,
@@ -318,8 +318,8 @@ test("extra discovered files are allowed when one is a duplicate", async () => {
       );
     }
     const discovery = await discoverAccounts(home);
-    assert.equal(discovery.discovered, 11);
-    assert.equal(discovery.accounts.length, 10);
+    assert.equal(discovery.discovered, 26);
+    assert.equal(discovery.accounts.length, 25);
     assert.equal(discovery.duplicates.length, 1);
   } finally {
     await rm(home, { recursive: true, force: true });

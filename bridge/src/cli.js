@@ -55,7 +55,7 @@ Custom-agent options:
   --agent-page-id ID
 
 Other options:
-  --default-model MODEL    Default: opus-4.8
+  --default-model MODEL    Default: gpt-5.6-sol
   --timezone ZONE          Default: America/Los_Angeles
   -h, --help               Show this help
 `;
@@ -75,7 +75,7 @@ export function parseInitArgs(argv) {
     agentName: null,
     agentAccessory: null,
     agentContextPageId: null,
-    defaultModel: "opus-4.8",
+    defaultModel: "gpt-5.6-sol",
     timezone: "America/Los_Angeles",
     accountPath: path.join(defaultAccountHome(), "notion_account.json"),
     accountHome: defaultAccountHome(),

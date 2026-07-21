@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "notion-fable/fable-5",
+  "model": "notion-fable/gpt-5.6-sol",
   "provider": {
     "notion-fable": {
       "npm": "@ai-sdk/openai-compatible",

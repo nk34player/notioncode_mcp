@@ -19,7 +19,7 @@ Subscribe to avoid missing new versions, fixes, and other AI tools.
 - OpenAI Responses, Chat Completions, and Anthropic Messages compatibility;
 - Native function/custom tools, `apply_patch`, shell, plans, skills, and MCP;
 - PNG, JPEG, GIF, and WebP as native Notion attachments;
-- Up to 10 independent Notion sessions with persistent load balancing and failover;
+- Up to 25 independent Notion sessions with persistent load balancing and failover;
 - Continuation of a single Codex session in a single Notion thread without re-sending full history;
 - Standard Codex compaction at 140,000 tokens and rollover to a new account;
 - Identical shared code on Linux and Windows.
@@ -223,7 +223,7 @@ sudo -u "$USER" -H node "$PWD/bridge/bin/notion-agent.mjs" \
   --account "$HOME/.notionagents/accounts/account-02.json"
 ```
 
-After adding account files, restart the bridge. Duplicate `token_v2` cookies or Notion users are automatically excluded; more than 10 unique accounts are intentionally not supported.
+After adding account files, restart the bridge. Duplicate `token_v2` cookies or Notion users are automatically excluded; more than 25 unique accounts are intentionally not supported.
 
 New Codex sessions are distributed via balanced round-robin/LRU. All turns of a session remain bound to their assigned Notion thread. On error, the account enters cooldown, and the request is safely retried on the next available account. Following compaction, a new segment is created and the next least-used account is selected.
 

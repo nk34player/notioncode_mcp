@@ -8,7 +8,7 @@ import { atomicWriteJson, modifiedTimeMs } from "./files.js";
 import { NotionProvider } from "./provider.js";
 import { KeyedMutex } from "./state.js";
 
-export const MAX_ACCOUNTS = 10;
+export const MAX_ACCOUNTS = 25;
 export const MAX_REASONING_EFFORT = "high";
 export const TRANSIENT_COOLDOWN_MS = 30_000;
 export const DENIAL_COOLDOWN_MS = 300_000;
