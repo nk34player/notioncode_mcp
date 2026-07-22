@@ -87,6 +87,13 @@ export function formatDiagnostic(record, { color = false } = {}) {
   return `${prefix} [bridge] ${event}${fields ? ` ${fields}` : ""}`;
 }
 
+const RECENT_DIAGNOSTICS_MAX = 500;
+const recentDiagnostics = [];
+
+export function getRecentDiagnostics() {
+  return [...recentDiagnostics];
+}
+
 export function writeDiagnostic(
   event,
   fields = {},
@@ -99,16 +106,28 @@ export function writeDiagnostic(
     ...fields,
   };
   const safeRecord = sanitizeValue(record);
-  const pretty = format === "pretty" || (!format && destination?.isTTY === true);
-  if (!pretty) {
-    destination.write(`${JSON.stringify(safeRecord)}\n`);
-    return safeRecord;
-  }
   const colorsEnabled = color ?? (
     !("NO_COLOR" in process.env)
     && process.env.NOTION_COLOR !== "0"
     && (process.env.NOTION_COLOR === "1" || destination?.isTTY === true)
   );
+  const formattedText = formatDiagnostic(safeRecord, { color: false });
+  recentDiagnostics.push({
+    timestamp: new Date().toISOString(),
+    event: safeRecord.event,
+    level: diagnosticLevel(safeRecord.event),
+    formatted: formattedText,
+    record: safeRecord,
+  });
+  if (recentDiagnostics.length > RECENT_DIAGNOSTICS_MAX) {
+    recentDiagnostics.shift();
+  }
+
+  const pretty = format === "pretty" || (!format && destination?.isTTY === true);
+  if (!pretty) {
+    destination.write(`${JSON.stringify(safeRecord)}\n`);
+    return safeRecord;
+  }
   destination.write(`${formatDiagnostic(safeRecord, { color: colorsEnabled })}\n`);
   return safeRecord;
 }

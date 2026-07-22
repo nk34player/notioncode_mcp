@@ -464,6 +464,13 @@ export class AccountPool {
       return {
         id: slot.id,
         slot: slot.slot,
+        accountPath: slot.accountPath,
+        workspace_id: slot.account.space_id,
+        workspace_name: slot.account.space_name || "",
+        workspace_domain: slot.account.space_domain || "",
+        user_id: slot.account.user_id,
+        user_name: slot.account.user_name || "",
+        user_email: slot.account.user_email || "",
         busy: slot.busy,
         available: !slot.busy && !slot.disabled && !cooldown,
         cooldown,

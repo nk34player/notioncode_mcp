@@ -202,6 +202,8 @@ function Invoke-Install {
 # ── Start server ───────────────────────────────────────────────────────────────
 
 function Invoke-StartServer {
+    param([switch]$NoLogTail)
+
     Assert-Command "node.exe" "Install Node.js 20 or newer."
     Assert-Command "npm.cmd"  "Install Node.js 20 or newer."
     Assert-Node20
@@ -238,6 +240,7 @@ function Invoke-StartServer {
     $env:NOTION_RUNTIME_ENV = $RuntimeEnv
     $env:NOTION_FABLE_PORT  = [string]$bridgePort
     $env:MCP_PORT           = [string]$mcpPort
+    $env:NOTION_QUIET_POLL  = "1"
     if ([string]::IsNullOrWhiteSpace($env:NOTION_LOG_FORMAT)) { $env:NOTION_LOG_FORMAT = "pretty" }
     if ([string]::IsNullOrWhiteSpace($env:NOTION_COLOR))      { $env:NOTION_COLOR = "1" }
 
@@ -270,6 +273,8 @@ function Invoke-StartServer {
         throw "Unified Node server failed to become ready. See: $LogFile"
     }
 
+    Start-Process "http://127.0.0.1:$bridgePort/dashboard"
+
     $bridgeOwner = Get-ListeningProcessId $bridgePort
     $mcpOwner    = Get-ListeningProcessId $mcpPort
     if (-not $bridgeOwner -or -not $mcpOwner -or $bridgeOwner -ne $mcpOwner) {
@@ -287,6 +292,10 @@ function Invoke-StartServer {
     Write-Host "      Bridge:  http://127.0.0.1:$bridgePort"
     Write-Host "      Runtime: http://127.0.0.1:$mcpPort"
     Write-Host "      Log:     $LogFile"
+    if ($NoLogTail) {
+        return
+    }
+
     Write-Host ""
     Write-Host "  To use with Codex CLI:"
     Write-Host "    `$env:ANTHROPIC_BASE_URL = 'http://127.0.0.1:$bridgePort'"
@@ -636,12 +645,31 @@ function Invoke-Start {
     Invoke-StartServer
 }
 
-# ── OpenCode ───────────────────────────────────────────────────────────────────
+# ── Dashboard ──────────────────────────────────────────────────────────────────
 
-function Invoke-OpenCode {
-    Assert-Command "opencode" "Install OpenCode and retry."
-    $env:OPENCODE_CONFIG_DIR = $OpenCodeDir
-    & opencode
+function Invoke-Dashboard {
+    Invoke-EnsureSetup
+
+    $DashboardDir = Join-Path $Root "dashboard"
+    $DistIndex = Join-Path $DashboardDir "dist\index.html"
+
+    if (-not (Test-Path $DistIndex)) {
+        Write-Host "[>] Building dashboard static assets..." -ForegroundColor Cyan
+        & npm.cmd --prefix $DashboardDir run build
+        if ($LASTEXITCODE -ne 0) { throw "Dashboard build failed." }
+    }
+
+    Invoke-StartServer
+
+    # Hide current launcher console window if running interactively
+    $asyncCode = '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();'
+    $type = Add-Type -MemberDefinition $asyncCode -Name "Win32Utils" -Namespace "Win32" -PassThru -ErrorAction SilentlyContinue
+    if ($type) {
+        $hwnd = [Win32.Win32Utils]::GetConsoleWindow()
+        if ($hwnd -ne [IntPtr]::Zero) {
+            [Win32.Win32Utils]::ShowWindow($hwnd, 0) | Out-Null # SW_HIDE
+        }
+    }
 }
 
 # ── Main Menu ──────────────────────────────────────────────────────────────────
@@ -667,17 +695,19 @@ function Show-Menu {
     Write-Host "  2)  🔍  Check accounts"
     Write-Host "  3)  ➕  Add a new account"
     Write-Host "  4)  🔄  Refresh account live tokens"
-    Write-Host "  5)  ⚙️   Settings"
-    Write-Host "  6)  ❌  Exit"
+    Write-Host "  5)  📊  Open Dashboard"
+    Write-Host "  6)  ⚙️   Settings"
+    Write-Host "  7)  ❌  Exit"
     Write-Host ""
 
-    switch (Read-Host "  Select an option [1-6]") {
+    switch (Read-Host "  Select an option [1-7]") {
         "1" { Invoke-Start }
         "2" { Invoke-CheckAccounts }
         "3" { Invoke-AddAccount }
         "4" { Invoke-RefreshClientVersion }
-        "5" { Invoke-Settings }
-        "6" { return }
+        "5" { Invoke-Dashboard }
+        "6" { Invoke-Settings }
+        "7" { return }
         default { throw "Invalid option." }
     }
 }
@@ -685,7 +715,7 @@ function Show-Menu {
 # ── Dispatch ───────────────────────────────────────────────────────────────────
 
 switch ($Action) {
-    "Menu"                 { Show-Menu }
+    "Menu"                 { Invoke-Dashboard }
     "Start"                { Invoke-Start }
     "Stop"                 { Invoke-StopServer }
     "Status"               { Show-Status }
@@ -693,6 +723,7 @@ switch ($Action) {
     "AddAccount"           { Invoke-AddAccount }
     "RefreshClientVersion" { Invoke-RefreshClientVersion }
     "Settings"             { Invoke-Settings }
+    "Dashboard"            { Invoke-Dashboard }
     "Install"              { Invoke-Install }
     "Verify"               { Invoke-Verify }
     "OpenCode"             { Invoke-OpenCode }

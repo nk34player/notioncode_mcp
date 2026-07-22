@@ -1,10 +1,13 @@
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import { AccountPoolError, MAX_ACCOUNTS, MAX_REASONING_EFFORT } from "./account-pool.js";
 import { createAgentOrchestrator } from "./agent-orchestrator.js";
 import { itemFingerprints } from "./conversation-segments.js";
 import { extractImageInputs } from "./notion-images.js";
 import {
   correlationId,
+  getRecentDiagnostics,
   withDiagnosticContext,
   writeDiagnostic,
 } from "./diagnostics.js";
@@ -629,12 +632,15 @@ export function createBridgeRequestHandler({
       `${startedAt}:${requestSequence += 1}:${method}:${requestPath}`,
     );
 
+    const isQuietPoll = requestPath === "/healthz" || requestPath === "/v1/logs";
     return withDiagnosticContext({ request_id: requestId }, async () => {
-      diagnostic("request_started", {
-        request_id: requestId,
-        method,
-        path: requestPath,
-      });
+      if (!isQuietPoll) {
+        diagnostic("request_started", {
+          request_id: requestId,
+          method,
+          path: requestPath,
+        });
+      }
       try {
         switch (key) {
         case "GET /healthz": {
@@ -656,6 +662,15 @@ export function createBridgeRequestHandler({
         }
         case "GET /v1/models":
           sendJson(response, 200, modelList(Math.floor(now() / 1000)));
+          return;
+        case "GET /v1/logs":
+          sendJson(response, 200, { logs: getRecentDiagnostics() });
+          return;
+        case "POST /v1/server/stop":
+          sendJson(response, 200, { ok: true, message: "Server shutting down" });
+          setTimeout(() => {
+            process.exit(0);
+          }, 500);
           return;
         case "POST /v1/messages/count_tokens": {
           const body = await readJson(request);
@@ -708,8 +723,38 @@ export function createBridgeRequestHandler({
           sendJson(response, 200, result.compact);
           return;
         }
-        default:
+        default: {
+          if (request.method === "GET" && (requestPath === "/dashboard" || requestPath.startsWith("/dashboard/") || requestPath.startsWith("/assets/"))) {
+            const dashboardDist = path.join(process.cwd(), "dashboard", "dist");
+            let relativePath = requestPath.startsWith("/assets/")
+              ? requestPath.slice(1)
+              : (requestPath.replace(/^\/dashboard\/?/, "") || "index.html");
+            let filePath = path.join(dashboardDist, relativePath);
+            if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+              filePath = path.join(dashboardDist, "index.html");
+            }
+            if (fs.existsSync(filePath)) {
+              const ext = path.extname(filePath);
+              const mimeTypes = {
+                ".html": "text/html; charset=utf-8",
+                ".js": "application/javascript; charset=utf-8",
+                ".css": "text/css; charset=utf-8",
+                ".json": "application/json",
+                ".svg": "image/svg+xml",
+                ".png": "image/png",
+              };
+              const contentType = mimeTypes[ext] || "application/octet-stream";
+              const fileContent = fs.readFileSync(filePath);
+              response.writeHead(200, {
+                "content-type": contentType,
+                "content-length": String(fileContent.length),
+              });
+              response.end(fileContent);
+              return;
+            }
+          }
           sendJson(response, 404, { detail: "Not Found" });
+        }
         }
       } catch (error) {
         if (error instanceof SyntaxError) {
@@ -737,13 +782,15 @@ export function createBridgeRequestHandler({
         sendJson(response, error?.status || 500, protocolErrorBody(error));
       } finally {
         const status = response.statusCode || 500;
-        diagnostic(status >= 400 ? "request_failed" : "request_completed", {
-          request_id: requestId,
-          method,
-          path: requestPath,
-          status,
-          duration_ms: Math.max(0, now() - startedAt),
-        });
+        if (!isQuietPoll || status >= 400) {
+          diagnostic(status >= 400 ? "request_failed" : "request_completed", {
+            request_id: requestId,
+            method,
+            path: requestPath,
+            status,
+            duration_ms: Math.max(0, now() - startedAt),
+          });
+        }
       }
     });
   };

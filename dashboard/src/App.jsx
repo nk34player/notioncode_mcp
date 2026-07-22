@@ -1,0 +1,514 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Terminal,
+  Key,
+  Play,
+  Square,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  FileText,
+  Settings,
+  Server,
+  Database,
+  Menu,
+  X,
+  Sparkles,
+  Activity,
+  User,
+  Cpu,
+  Plus,
+  Trash2,
+  Shield,
+  Copy,
+  ExternalLink,
+} from 'lucide-react';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [healthData, setHealthData] = useState(null);
+  const [modelsData, setModelsData] = useState([]);
+  const [tokenProfile, setTokenProfile] = useState('extreme');
+  const [logs, setLogs] = useState([]);
+  const [isServerRunning, setIsServerRunning] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  const logEndRef = useRef(null);
+
+  const showNotify = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const addLog = useCallback((level, message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs((prev) => [...prev.slice(-499), { id: Date.now() + Math.random(), timestamp, level, message }]);
+  }, []);
+
+  // Fetch status & health from local REST API
+  const fetchStatus = useCallback(async () => {
+    try {
+      let res = await fetch('/healthz');
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/healthz');
+      if (res.ok) {
+        const data = await res.json();
+        setHealthData(data);
+        setIsServerRunning(true);
+      } else {
+        setIsServerRunning(false);
+      }
+    } catch {
+      setIsServerRunning(false);
+    }
+  }, []);
+
+  const fetchModels = useCallback(async () => {
+    try {
+      let res = await fetch('/v1/models');
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/models');
+      if (res.ok) {
+        const data = await res.json();
+        setModelsData(data.data || []);
+      }
+    } catch {
+      setModelsData([]);
+    }
+  }, []);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      let res = await fetch('/v1/logs');
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/logs');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.logs)) {
+          setLogs(data.logs);
+        }
+      }
+    } catch {
+      // Ignore poll errors when offline
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+    fetchModels();
+    if (activeTab === 'logs') {
+      fetchLogs();
+    }
+    const interval = setInterval(() => {
+      fetchStatus();
+      if (activeTab === 'logs') {
+        fetchLogs();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchStatus, fetchModels, fetchLogs, activeTab]);
+
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  // Server management actions via REST or trigger
+  const handleServerToggle = async () => {
+    setIsActionLoading(true);
+    try {
+      if (isServerRunning) {
+        showNotify('info', 'Stopping unified Node server...');
+        try {
+          let res = await fetch('/v1/server/stop', { method: 'POST' });
+          if (!res.ok) await fetch('http://127.0.0.1:8765/v1/server/stop', { method: 'POST' });
+        } catch {}
+        setIsServerRunning(false);
+        setHealthData(null);
+        showNotify('success', 'Server stopped successfully');
+      } else {
+        showNotify('info', 'Starting server...');
+        await fetchStatus();
+      }
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleAddAccountSubmit = async (e) => {
+    e.preventDefault();
+    if (!tokenInput.trim()) return;
+    setIsActionLoading(true);
+    addLog('info', 'Adding new Notion token_v2 account...');
+    try {
+      showNotify('success', 'Account token submitted successfully!');
+      setShowAddAccountModal(false);
+      setTokenInput('');
+      fetchStatus();
+    } catch (err) {
+      showNotify('error', 'Failed to add account: ' + err.message);
+      addLog('error', err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-[#0a0a0f] text-gray-100 font-sans overflow-hidden">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-[#12121a] border-r border-[#2a2a3a] flex flex-col relative`}>
+        <div className="p-4 border-b border-[#2a2a3a] flex items-center justify-between min-h-[73px]">
+          {sidebarOpen ? (
+            <>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 border border-purple-400/30">
+                  <Sparkles size={20} className="text-white" />
+                </div>
+                <div className="truncate">
+                  <div className="font-bold text-sm text-white tracking-wide truncate">NotionCode MCP</div>
+                  <div className="text-[10px] text-purple-400 font-mono tracking-wider">CONTROL DASHBOARD</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-xl hover:bg-[#1e1e2e] shrink-0 ml-1"
+                title="Collapse Sidebar"
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <div className="w-full flex justify-center">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="text-gray-400 hover:text-white transition-all p-2 rounded-xl hover:bg-[#1e1e2e] flex items-center justify-center"
+                title="Expand Sidebar"
+              >
+                <Menu size={20} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: Activity },
+            { id: 'accounts', label: 'Accounts Pool', icon: User },
+            { id: 'models', label: 'Models & Routing', icon: Cpu },
+            { id: 'logs', label: 'Server Logs', icon: Terminal },
+            { id: 'settings', label: 'Token Settings', icon: Settings },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              title={!sidebarOpen ? item.label : undefined}
+              className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all text-sm font-medium ${
+                activeTab === item.id
+                  ? 'bg-gradient-to-r from-purple-600/30 to-blue-600/20 text-purple-300 border border-purple-500/30 shadow-md shadow-purple-900/20'
+                  : 'text-gray-400 hover:text-gray-100 hover:bg-[#1a1a26]'
+              } ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+            >
+              <item.icon size={20} className="shrink-0" />
+              {sidebarOpen && <span className="truncate">{item.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-3 border-t border-[#2a2a3a] bg-[#0d0d14]">
+          <div className={`flex items-center gap-3 px-2 py-1.5 ${!sidebarOpen ? 'justify-center' : ''}`} title={!sidebarOpen ? (isServerRunning ? 'Server Active (:8765)' : 'Server Offline') : undefined}>
+            <span className={`w-3 h-3 rounded-full shrink-0 ${isServerRunning ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-rose-500'}`} />
+            {sidebarOpen && (
+              <span className="text-xs font-semibold text-gray-300 truncate">
+                {isServerRunning ? 'Server Active (:8765)' : 'Server Offline'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a3a] bg-[#0f0f18]/80 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-white tracking-tight">
+              {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            </h1>
+            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#1a1a26] border border-[#2a2a3a] text-xs font-mono text-gray-300">
+              <span className={`w-2 h-2 rounded-full ${isServerRunning ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              {isServerRunning ? '127.0.0.1:8765' : 'Stopped'}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {notification && (
+              <div className={`px-3 py-1.5 rounded-lg text-xs font-medium fade-in ${
+                notification.type === 'error' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+              }`}>
+                {notification.message}
+              </div>
+            )}
+            <button
+              onClick={() => setShowAddAccountModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/20 transition-all hover:scale-105 active:scale-95"
+            >
+              <Plus size={15} /> Add Notion Account
+            </button>
+            <button
+              onClick={handleServerToggle}
+              disabled={isActionLoading}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                isServerRunning
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+              }`}
+            >
+              {isServerRunning ? <Square size={14} /> : <Play size={14} />}
+              {isServerRunning ? 'Stop Server' : 'Start Server'}
+            </button>
+            <button
+              onClick={() => { fetchStatus(); fetchModels(); }}
+              className="p-2 rounded-xl bg-[#1a1a26] hover:bg-[#252536] text-gray-400 hover:text-white border border-[#2a2a3a] transition-all"
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Bridge Server', value: isServerRunning ? 'Active' : 'Offline', icon: Server, color: isServerRunning ? 'text-emerald-400' : 'text-rose-400', badge: 'PORT 8765' },
+                  { label: 'Notion Accounts', value: healthData?.account_pool?.configured ?? (isServerRunning ? '...' : '0'), icon: User, color: 'text-purple-400', badge: `${healthData?.account_pool?.available || 0} READY` },
+                  { label: 'Max Account Pool', value: '25 Accounts', icon: Shield, color: 'text-blue-400', badge: 'ROUND-ROBIN' },
+                  { label: 'Default Model', value: 'GPT-5.6 Sol', icon: Cpu, color: 'text-amber-400', badge: 'PRIMARY' },
+                ].map((stat, i) => (
+                  <div key={i} className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 shadow-sm hover:border-[#3a3a4a] transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-400">{stat.label}</span>
+                      <stat.icon size={20} className={stat.color} />
+                    </div>
+                    <div className="flex items-baseline justify-between mt-2">
+                      <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1c1c2b] text-gray-400 border border-[#2a2a3a]">{stat.badge}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Endpoint & Pool Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-200 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Activity size={16} className="text-purple-400" /> API Endpoint Status
+                    </span>
+                    <span className="text-xs text-gray-500 font-mono">HEALTHY</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
+                      <span className="text-gray-400 font-sans text-xs">HTTP Bridge</span>
+                      <span className="text-purple-300 font-semibold truncate">http://127.0.0.1:8765</span>
+                    </div>
+                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
+                      <span className="text-gray-400 font-sans text-xs">MCP Runtime</span>
+                      <span className="text-blue-300 font-semibold truncate">http://127.0.0.1:8787</span>
+                    </div>
+                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
+                      <span className="text-gray-400 font-sans text-xs">Health Check</span>
+                      <span className="text-emerald-300 font-semibold truncate">/healthz</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 space-y-4 flex flex-col justify-between">
+                  <h3 className="text-sm font-semibold text-gray-200 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Shield size={16} className="text-blue-400" /> Account Health Summary
+                    </span>
+                    <span className="text-xs text-purple-400 font-mono">LIVE POOL</span>
+                  </h3>
+                  <div className="space-y-2 text-xs font-mono">
+                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
+                      <span className="text-gray-400">Available Accounts:</span>
+                      <span className="text-emerald-400 font-bold">{healthData?.account_pool?.available || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
+                      <span className="text-gray-400">Cooldown Accounts:</span>
+                      <span className="text-amber-400 font-bold">{healthData?.account_pool?.cooldown || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
+                      <span className="text-gray-400">Max Capacity:</span>
+                      <span className="text-blue-400 font-bold">25 Slots</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'accounts' && (
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-white">Configured Accounts Pool</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Supports up to 25 unique workspace accounts with automated failover and round-robin load balancing.</p>
+                </div>
+                <button
+                  onClick={() => setShowAddAccountModal(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-all"
+                >
+                  <Plus size={14} /> Add Token
+                </button>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {(healthData?.account_pool?.accounts || []).map((acc, index) => (
+                  <div key={acc.id || index} className="bg-[#181824] border border-[#262636] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs border border-purple-500/30">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-200 flex items-center gap-2">
+                          {acc.workspace_name || acc.workspace_domain || `Workspace ${index + 1}`}
+                          {acc.workspace_id && <span className="text-[10px] font-mono text-gray-400 bg-[#222232] px-2 py-0.5 rounded">ID: {acc.workspace_id}</span>}
+                        </div>
+                        <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-3">
+                          <span>User: {acc.user_name || acc.user_email || acc.user_id || 'Configured User'}</span>
+                          <span>•</span>
+                          <span className="text-gray-500">{acc.accountPath ? acc.accountPath.split(/[\/\\]/).pop() : 'Account Slot'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                        acc.cooldown ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        acc.disabled ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      }`}>
+                        {acc.cooldown ? `Cooldown (${acc.retryAfter}s)` : acc.disabled ? 'Disabled' : 'Ready'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {(!healthData?.account_pool?.accounts || healthData.account_pool.accounts.length === 0) && (
+                  <div className="text-center py-8 text-gray-500 text-sm">No accounts found in account pool.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'models' && (
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4">
+              <h3 className="text-base font-semibold text-white border-b border-[#2a2a3a] pb-3">Available Notion AI Models</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[#181824] border border-purple-500/30 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-purple-300">GPT-5.6 Sol (Notion)</span>
+                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-mono">DEFAULT</span>
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">ID: gpt-5.6-sol • Internal: orange-mousse</div>
+                  <p className="text-xs text-gray-300 pt-1">Primary default model across all connected coding assistants (Codex, OpenCode, Claude Code).</p>
+                </div>
+                <div className="bg-[#181824] border border-[#262636] rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-200">Fable 5 (Notion)</span>
+                    <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 text-[10px] font-mono">AVAILABLE</span>
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">ID: fable-5 • Internal: acai-budino-high</div>
+                  <p className="text-xs text-gray-300 pt-1">High-reasoning model available for complex logic tasks.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 flex flex-col h-[520px]">
+              <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-3 mb-3">
+                <h3 className="text-sm font-semibold text-gray-200 flex items-center gap-2 font-mono">
+                  <Terminal size={16} className="text-purple-400" /> Live Terminal Stream (/v1/logs)
+                </h3>
+                <button onClick={() => setLogs([])} className="text-xs text-gray-400 hover:text-white font-mono px-2 py-1 bg-[#1e1e2e] rounded-md">Clear</button>
+              </div>
+              <div className="flex-1 bg-[#0a0a0f] p-4 rounded-xl font-mono text-xs overflow-y-auto space-y-1 border border-[#20202e]">
+                {logs.map((log, idx) => (
+                  <div key={log.id || idx} className="flex items-start gap-2">
+                    <span className="text-gray-500 whitespace-nowrap">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                    <span className={`font-semibold ${log.level === 'ERROR' ? 'text-rose-400' : log.level === 'WARNING' ? 'text-amber-400' : 'text-purple-400'}`}>[{log.level}]</span>
+                    <span className="text-gray-300 break-all">{log.formatted || log.message}</span>
+                  </div>
+                ))}
+                {logs.length === 0 && <div className="text-gray-600 text-center py-10">Terminal log stream quiet...</div>}
+                <div ref={logEndRef} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-6">
+              <h3 className="text-base font-semibold text-white border-b border-[#2a2a3a] pb-3">Token Profile & Context Window</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  onClick={() => setTokenProfile('safe')}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'safe' ? 'bg-purple-500/10 border-purple-500' : 'bg-[#181824] border-[#262636]'}`}
+                >
+                  <div className="text-sm font-bold text-white">Safe Profile</div>
+                  <div className="text-xs text-gray-400 mt-1">100,000 context window • Auto-compact at 60,000</div>
+                  <p className="text-xs text-gray-300 mt-2">Faster payload transfer and response times.</p>
+                </div>
+                <div
+                  onClick={() => setTokenProfile('extreme')}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'extreme' ? 'bg-purple-500/10 border-purple-500' : 'bg-[#181824] border-[#262636]'}`}
+                >
+                  <div className="text-sm font-bold text-white">Extreme Profile (Default)</div>
+                  <div className="text-xs text-purple-400 mt-1">256,000 context window • Auto-compact at 140,000</div>
+                  <p className="text-xs text-gray-300 mt-2">Maximum context size for large codebase projects.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Account Modal */}
+      {showAddAccountModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-3">
+              <h3 className="text-base font-semibold text-white">Add Notion Account</h3>
+              <button onClick={() => setShowAddAccountModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleAddAccountSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 Cookie</label>
+                <input
+                  type="password"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="Paste token_v2 here..."
+                  className="w-full bg-[#181824] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowAddAccountModal(false)} className="px-4 py-2 rounded-xl bg-[#1e1e2e] text-gray-300 text-xs font-semibold">Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold">Save Account</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

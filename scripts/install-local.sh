@@ -99,6 +99,11 @@ else
     @ai-sdk/openai-compatible @opencode-ai/plugin
 fi
 
+if [[ -d "${ROOT}/dashboard" ]]; then
+  run_as_service_user npm --prefix "${ROOT}/dashboard" install --cache "${NPM_CACHE}"
+  run_as_service_user npm --prefix "${ROOT}/dashboard" run build
+fi
+
 if [[ ! -f "${ROOT}/runtime/.env" ]]; then
   secret="$(openssl rand -hex 32)"
   install -m 600 /dev/null "${ROOT}/runtime/.env"

@@ -77,14 +77,14 @@ test("HTTP request lifecycle emits start and completion diagnostics", async () =
   };
   const harness = await startHarness(accountPool);
   try {
-    const response = await requestJson(harness, "GET", "/healthz");
+    const response = await requestJson(harness, "GET", "/v1/models");
     assert.equal(response.status, 200);
     assert.deepEqual(harness.diagnostics.map((entry) => entry.event), [
       "request_started",
       "request_completed",
     ]);
     assert.equal(harness.diagnostics[0].method, "GET");
-    assert.equal(harness.diagnostics[0].path, "/healthz");
+    assert.equal(harness.diagnostics[0].path, "/v1/models");
     assert.equal(harness.diagnostics[1].status, 200);
     assert.equal(harness.diagnostics[0].request_id, harness.diagnostics[1].request_id);
   } finally {
