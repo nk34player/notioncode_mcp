@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$CodeRoot = $HOME
 )
@@ -63,6 +63,16 @@ if (Test-NpmInstalled $OpenCodeDir -Packages "@ai-sdk/openai-compatible","@openc
     Write-Host "[>] Installing OpenCode dependencies..."
     & npm.cmd --prefix $OpenCodeDir install --cache $NpmCache "@ai-sdk/openai-compatible" "@opencode-ai/plugin"
     if ($LASTEXITCODE -ne 0) { throw "OpenCode dependency installation failed." }
+}
+
+# ── Dashboard static bundle build ─────────────────────────────────────────────
+$dashboardDir = Join-Path $Root "dashboard"
+if (Test-Path $dashboardDir) {
+    Write-Host "[>] Installing Dashboard dependencies & building static bundle..."
+    & npm.cmd --prefix $dashboardDir install --cache $NpmCache
+    if ($LASTEXITCODE -ne 0) { throw "Dashboard dependency installation failed." }
+    & npm.cmd --prefix $dashboardDir run build
+    if ($LASTEXITCODE -ne 0) { throw "Dashboard static build failed." }
 }
 
 # ── Runtime .env (create once) ────────────────────────────────────────────────

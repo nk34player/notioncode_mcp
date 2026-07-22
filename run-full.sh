@@ -388,6 +388,7 @@ start_services() {
         NOTION_AGENT_HOME="${ACCOUNT_HOME}" \
         NOTION_FABLE_PORT="${BRIDGE_PORT}" \
         MCP_PORT="${RUNTIME_PORT}" \
+        NOTION_QUIET_POLL="1" \
         NOTION_LOG_FORMAT="${NOTION_LOG_FORMAT:-pretty}" \
         NOTION_COLOR="${NOTION_COLOR:-1}" \
         node "${ROOT}/bridge/server.js" >"${log_file}" 2>&1 &
@@ -458,48 +459,32 @@ start_services() {
     tail -n 25 -f "${log_file}"
 }
 
-# ── Main Menu ────────────────────────────────────────────────────────────────
+launch_dashboard() {
+    ensure_setup
+    local bridge_port
+    bridge_port="$(bridge_port)"
 
-clear
-echo ""
-echo "  ╔══════════════════════════════════════════╗"
-echo "  ║      NotionCode MCP — Launcher           ║"
-echo "  ╚══════════════════════════════════════════╝"
-echo ""
+    local dashboard_dir="${ROOT}/dashboard"
+    local dist_index="${dashboard_dir}/dist/index.html"
 
-ACCOUNT_STATUS="❌ No accounts configured"
-if has_account; then
-    COUNT=0
-    [[ -f "${ACCOUNT_HOME}/notion_account.json" ]] && COUNT=$((COUNT+1))
-    EXTRA=$(find "${ACCOUNT_HOME}/accounts" -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
-    COUNT=$((COUNT + EXTRA))
-    ACCOUNT_STATUS="✅ ${COUNT} account(s) configured"
-fi
+    if [[ ! -f "${dist_index}" ]]; then
+        echo "[>] Building dashboard static assets..."
+        (cd "${dashboard_dir}" && npm run build) || return 1
+    fi
 
-echo "  Status: ${ACCOUNT_STATUS}"
-echo ""
-echo "  1)  🚀  Start unified Node server"
-echo "  2)  🔍  Check accounts"
-echo "  3)  ➕  Add a new account"
-echo "  4)  🔄  Refresh account live tokens"
-echo "  5)  ⚙️   Settings"
-echo "  6)  ❌  Exit"
-echo ""
-echo -n "  Select an option [1-6]: "
-read -r CHOICE
+    (
+        sleep 2
+        if command -v open >/dev/null 2>&1; then
+            open "http://127.0.0.1:${bridge_port}/dashboard"
+        elif command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "http://127.0.0.1:${bridge_port}/dashboard"
+        fi
+    ) &
 
-case "${CHOICE}" in
-    1) start_services ;;
-    2) check_accounts ;;
-    3) add_account ;;
-    4) refresh_tokens ;;
-    5) configure_token_settings ;;
-    6)
-        _clear_history
-        exit 0
-        ;;
-    *) echo "[!] Invalid option." ; exit 1 ;;
-esac
+    start_services
+}
 
-# Always clear history on normal exit
+# ── Launch Dashboard ───────────────────────────────────────────────────────────
+
+launch_dashboard
 _clear_history
