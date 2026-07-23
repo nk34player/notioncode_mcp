@@ -424,14 +424,14 @@ function App() {
                   { label: 'Max Account Pool', value: '25 Accounts', icon: Shield, color: 'text-blue-400', badge: 'ROUND-ROBIN' },
                   { label: 'Default Model', value: 'GPT-5.6 Sol', icon: Cpu, color: 'text-amber-400', badge: 'PRIMARY' },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 shadow-sm hover:border-[#3a3a4a] transition-all">
+                  <div key={i} className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 shadow-sm hover:border-[#3a3a4a] hover:scale-[1.01] transition-all">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-gray-400">{stat.label}</span>
                       <stat.icon size={20} className={stat.color} />
                     </div>
-                    <div className="flex items-baseline justify-between mt-2">
+                    <div className="flex items-baseline justify-between mt-3">
                       <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1c1c2b] text-gray-400 border border-[#2a2a3a]">{stat.badge}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#1c1c2b] text-gray-300 border border-[#2a2a3a] font-semibold">{stat.badge}</span>
                     </div>
                   </div>
                 ))}
@@ -439,47 +439,50 @@ function App() {
 
               {/* Endpoint & Pool Details */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-200 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Activity size={16} className="text-purple-400" /> API Endpoint Status
-                    </span>
-                    <span className="text-xs text-gray-500 font-mono">HEALTHY</span>
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
-                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
-                      <span className="text-gray-400 font-sans text-xs">HTTP Bridge</span>
+                <div className="lg:col-span-2 bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                        <Activity size={18} className="text-purple-400" /> API Endpoint Status
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Live status of the unified Node bridge and MCP runtime proxy endpoints.</p>
+                    </div>
+                    <span className="text-xs text-emerald-400 font-mono font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">ONLINE</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs pt-1">
+                    <div className="bg-[#181824] p-4 rounded-xl border border-[#262636] flex flex-col justify-between space-y-2">
+                      <span className="text-gray-400 font-sans text-xs font-medium">HTTP Bridge</span>
                       <span className="text-purple-300 font-semibold truncate">http://127.0.0.1:8765</span>
                     </div>
-                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
-                      <span className="text-gray-400 font-sans text-xs">MCP Runtime</span>
+                    <div className="bg-[#181824] p-4 rounded-xl border border-[#262636] flex flex-col justify-between space-y-2">
+                      <span className="text-gray-400 font-sans text-xs font-medium">MCP Runtime</span>
                       <span className="text-blue-300 font-semibold truncate">http://127.0.0.1:8787</span>
                     </div>
-                    <div className="bg-[#181824] p-3.5 rounded-xl border border-[#262636] flex flex-col justify-between space-y-1">
-                      <span className="text-gray-400 font-sans text-xs">Health Check</span>
+                    <div className="bg-[#181824] p-4 rounded-xl border border-[#262636] flex flex-col justify-between space-y-2">
+                      <span className="text-gray-400 font-sans text-xs font-medium">Health Check</span>
                       <span className="text-emerald-300 font-semibold truncate">/healthz</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 space-y-4 flex flex-col justify-between">
-                  <h3 className="text-sm font-semibold text-gray-200 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Shield size={16} className="text-blue-400" /> Account Health Summary
-                    </span>
-                    <span className="text-xs text-purple-400 font-mono">LIVE POOL</span>
-                  </h3>
-                  <div className="space-y-2 text-xs font-mono">
-                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
-                      <span className="text-gray-400">Available Accounts:</span>
+                <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-4">
+                    <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                      <Shield size={18} className="text-blue-400" /> Live Account Pool
+                    </h3>
+                    <span className="text-xs text-purple-400 font-mono font-semibold px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30">ROTATING</span>
+                  </div>
+                  <div className="space-y-2.5 text-xs font-mono pt-1">
+                    <div className="flex justify-between items-center bg-[#181824] p-3 rounded-xl border border-[#262636]">
+                      <span className="text-gray-400 font-sans">Available Accounts:</span>
                       <span className="text-emerald-400 font-bold">{healthData?.account_pool?.available || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
-                      <span className="text-gray-400">Cooldown Accounts:</span>
+                    <div className="flex justify-between items-center bg-[#181824] p-3 rounded-xl border border-[#262636]">
+                      <span className="text-gray-400 font-sans">Cooldown Accounts:</span>
                       <span className="text-amber-400 font-bold">{healthData?.account_pool?.cooldown || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center bg-[#181824] p-2.5 rounded-lg border border-[#262636]">
-                      <span className="text-gray-400">Max Capacity:</span>
+                    <div className="flex justify-between items-center bg-[#181824] p-3 rounded-xl border border-[#262636]">
+                      <span className="text-gray-400 font-sans">Max Capacity:</span>
                       <span className="text-blue-400 font-bold">25 Slots</span>
                     </div>
                   </div>
@@ -489,15 +492,17 @@ function App() {
           )}
 
           {activeTab === 'accounts' && (
-            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4">
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-5 shadow-sm">
               <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-4">
                 <div>
-                  <h3 className="text-base font-semibold text-white">Configured Accounts Pool</h3>
+                  <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                    <User size={18} className="text-purple-400" /> Configured Accounts Pool
+                  </h3>
                   <p className="text-xs text-gray-400 mt-0.5">Supports up to 25 unique workspace accounts with automated failover and round-robin load balancing.</p>
                 </div>
                 <button
                   onClick={() => setShowAddForm((v) => !v)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-all"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
                 >
                   {showAddForm ? <X size={14} /> : <Plus size={14} />}
                   {showAddForm ? 'Cancel' : 'Add Account'}
@@ -506,9 +511,9 @@ function App() {
 
               {/* Inline add form */}
               {showAddForm && (
-                <form onSubmit={handleAddAccountSubmit} className="bg-[#181824] border border-purple-500/30 rounded-xl p-4 space-y-3">
+                <form onSubmit={handleAddAccountSubmit} className="bg-[#181824] border border-purple-500/40 rounded-xl p-4 space-y-3.5 fade-in">
                   <div className="text-xs font-semibold text-purple-300 flex items-center gap-2">
-                    <Plus size={13} /> Add Notion Account
+                    <Plus size={14} /> Add Notion Account Token
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 value or browser cookie</label>
@@ -517,31 +522,31 @@ function App() {
                       value={tokenInput}
                       onChange={(e) => setTokenInput(e.target.value)}
                       placeholder="Paste the token_v2 value or cookie..."
-                      className="w-full bg-[#0f0f18] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="w-full bg-[#0f0f18] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono transition-colors"
                       required
                       autoFocus
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => { setShowAddForm(false); setTokenInput(''); }} className="px-4 py-2 rounded-xl bg-[#1e1e2e] text-gray-300 text-xs font-semibold">Cancel</button>
-                    <button type="submit" disabled={isActionLoading} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2">
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button type="button" onClick={() => { setShowAddForm(false); setTokenInput(''); }} className="px-4 py-2 rounded-xl bg-[#1e1e2e] hover:bg-[#28283a] text-gray-300 text-xs font-semibold transition-colors cursor-pointer">Cancel</button>
+                    <button type="submit" disabled={isActionLoading} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-purple-600/20 transition-all cursor-pointer">
                       {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Save Account
                     </button>
                   </div>
                 </form>
               )}
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-1">
                 {(healthData?.account_pool?.accounts || []).map((acc, index) => (
-                  <div key={acc.id || index} className="bg-[#181824] border border-[#262636] rounded-xl p-4 flex items-center justify-between">
+                  <div key={acc.id || index} className="bg-[#181824] border border-[#262636] rounded-xl p-4 flex items-center justify-between hover:border-[#36364a] transition-all">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs border border-purple-500/30">
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs border border-purple-500/30 shrink-0">
                         {index + 1}
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                           {acc.workspace_name || acc.workspace_domain || (acc.workspace_id ? `Space (${acc.workspace_id.slice(0, 8)})` : `Workspace ${index + 1}`)}
-                          {acc.workspace_id && <span className="text-[10px] font-mono text-gray-400 bg-[#222232] px-2 py-0.5 rounded">ID: {acc.workspace_id}</span>}
+                          {acc.workspace_id && <span className="text-[10px] font-mono text-gray-400 bg-[#222232] px-2 py-0.5 rounded border border-[#2a2a3a]">ID: {acc.workspace_id}</span>}
                         </div>
                         <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-3">
                           <span>User: {acc.user_name || acc.user_email || acc.user_id || 'Configured User'}</span>
@@ -550,7 +555,7 @@ function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
                         acc.cooldown ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                         acc.disabled ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
@@ -574,85 +579,111 @@ function App() {
                   </div>
                 ))}
                 {(!healthData?.account_pool?.accounts || healthData.account_pool.accounts.length === 0) && (
-                  <div className="text-center py-8 text-gray-500 text-sm">No accounts found in account pool.</div>
+                  <div className="text-center py-10 text-gray-500 text-sm bg-[#181824] rounded-xl border border-[#262636]">
+                    No accounts configured in account pool. Click <span className="text-purple-400 font-semibold">Add Account</span> above to connect one.
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {activeTab === 'models' && (
-            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-4">
-              <h3 className="text-base font-semibold text-white border-b border-[#2a2a3a] pb-3">Available Notion AI Models</h3>
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-5 shadow-sm">
+              <div className="border-b border-[#2a2a3a] pb-4">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <Cpu size={18} className="text-amber-400" /> Available Notion AI Models
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">High-reasoning AI models exposed by the compatibility bridge for coding CLI assistants.</p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-[#181824] border border-purple-500/30 rounded-xl p-4 space-y-2">
+                <div className="bg-[#181824] border border-purple-500/40 rounded-xl p-4 space-y-2.5 hover:border-purple-500/60 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-purple-300">GPT-5.6 Sol (Notion)</span>
-                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-mono">DEFAULT</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono font-semibold">DEFAULT</span>
                   </div>
                   <div className="text-xs text-gray-400 font-mono">ID: gpt-5.6-sol • Internal: orange-mousse</div>
-                  <p className="text-xs text-gray-300 pt-1">Primary default model across all connected coding assistants (Codex, OpenCode, Claude Code).</p>
+                  <p className="text-xs text-gray-300 pt-1 leading-relaxed">Primary default model across all connected coding assistants (Codex, OpenCode, Claude Code).</p>
                 </div>
-                <div className="bg-[#181824] border border-[#262636] rounded-xl p-4 space-y-2">
+                <div className="bg-[#181824] border border-[#262636] rounded-xl p-4 space-y-2.5 hover:border-[#36364a] transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-gray-200">Fable 5 (Notion)</span>
-                    <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 text-[10px] font-mono">AVAILABLE</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-mono font-semibold">AVAILABLE</span>
                   </div>
                   <div className="text-xs text-gray-400 font-mono">ID: fable-5 • Internal: acai-budino-high</div>
-                  <p className="text-xs text-gray-300 pt-1">High-reasoning model available for complex logic tasks.</p>
+                  <p className="text-xs text-gray-300 pt-1 leading-relaxed">High-reasoning model available for complex logic tasks.</p>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === 'logs' && (
-            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 flex flex-col h-[520px]">
-              <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-3 mb-3">
-                <h3 className="text-sm font-semibold text-gray-200 flex items-center gap-2 font-mono">
-                  <Terminal size={16} className="text-purple-400" /> Live Terminal Stream (/v1/logs)
-                </h3>
-                <button onClick={() => setLogs([])} className="text-xs text-gray-400 hover:text-white font-mono px-2 py-1 bg-[#1e1e2e] rounded-md">Clear</button>
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 flex flex-col h-[540px] shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-4 mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                    <Terminal size={18} className="text-purple-400" /> Live Server Log Stream
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Real-time log buffer streamed from the unified Node server runtime.</p>
+                </div>
+                <button
+                  onClick={() => setLogs([])}
+                  className="px-3 py-1.5 rounded-xl bg-[#1a1a26] hover:bg-[#252536] text-xs text-gray-300 hover:text-white border border-[#2a2a3a] font-mono transition-colors cursor-pointer"
+                >
+                  Clear Logs
+                </button>
               </div>
-              <div className="flex-1 bg-[#0a0a0f] p-4 rounded-xl font-mono text-xs overflow-y-auto space-y-1 border border-[#20202e]">
+              <div className="flex-1 bg-[#0a0a0f] p-4 rounded-xl font-mono text-xs overflow-y-auto space-y-1.5 border border-[#20202e]">
                 {logs.map((log, idx) => (
-                  <div key={log.id || idx} className="flex items-start gap-2">
-                    <span className="text-gray-500 whitespace-nowrap">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-                    <span className={`font-semibold ${log.level === 'ERROR' ? 'text-rose-400' : log.level === 'WARNING' ? 'text-amber-400' : 'text-purple-400'}`}>[{log.level}]</span>
+                  <div key={log.id || idx} className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="text-gray-500 whitespace-nowrap text-[11px]">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                    <span className={`font-bold text-[11px] ${log.level === 'ERROR' ? 'text-rose-400' : log.level === 'WARNING' ? 'text-amber-400' : 'text-purple-400'}`}>[{log.level}]</span>
                     <span className="text-gray-300 break-all">{log.formatted || log.message}</span>
                   </div>
                 ))}
-                {logs.length === 0 && <div className="text-gray-600 text-center py-10">Terminal log stream quiet...</div>}
+                {logs.length === 0 && <div className="text-gray-600 text-center py-16 font-sans text-xs">Terminal log stream quiet...</div>}
                 <div ref={logEndRef} />
               </div>
             </div>
           )}
 
           {activeTab === 'settings' && (
-            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-6">
-              <h3 className="text-base font-semibold text-white border-b border-[#2a2a3a] pb-3">Token Profile & Context Window</h3>
+            <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 space-y-6 shadow-sm">
+              <div className="border-b border-[#2a2a3a] pb-4">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <Settings size={18} className="text-purple-400" /> Token Profile & Context Window
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Configure token context limits and automatic history compaction settings.</p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div
                   onClick={() => setTokenProfile('safe')}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'safe' ? 'bg-purple-500/10 border-purple-500' : 'bg-[#181824] border-[#262636]'}`}
+                  className={`p-5 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'safe' ? 'bg-purple-500/10 border-purple-500 shadow-md shadow-purple-900/10' : 'bg-[#181824] border-[#262636] hover:border-[#36364a]'}`}
                 >
-                  <div className="text-sm font-bold text-white">Safe Profile</div>
-                  <div className="text-xs text-gray-400 mt-1">100,000 context window • Auto-compact at 60,000</div>
-                  <p className="text-xs text-gray-300 mt-2">Faster payload transfer and response times.</p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-white">Safe Profile</div>
+                    {tokenProfile === 'safe' && <CheckCircle2 size={16} className="text-purple-400" />}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1 font-mono">100,000 context window • Auto-compact at 60,000</div>
+                  <p className="text-xs text-gray-300 mt-2 leading-relaxed">Faster payload transfer and lower memory footprint.</p>
                 </div>
                 <div
                   onClick={() => setTokenProfile('extreme')}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'extreme' ? 'bg-purple-500/10 border-purple-500' : 'bg-[#181824] border-[#262636]'}`}
+                  className={`p-5 rounded-xl border cursor-pointer transition-all ${tokenProfile === 'extreme' ? 'bg-purple-500/10 border-purple-500 shadow-md shadow-purple-900/10' : 'bg-[#181824] border-[#262636] hover:border-[#36364a]'}`}
                 >
-                  <div className="text-sm font-bold text-white">Extreme Profile (Default)</div>
-                  <div className="text-xs text-purple-400 mt-1">256,000 context window • Auto-compact at 140,000</div>
-                  <p className="text-xs text-gray-300 mt-2">Maximum context size for large codebase projects.</p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-white">Extreme Profile (Default)</div>
+                    {tokenProfile === 'extreme' && <CheckCircle2 size={16} className="text-purple-400" />}
+                  </div>
+                  <div className="text-xs text-purple-400 mt-1 font-mono">256,000 context window • Auto-compact at 140,000</div>
+                  <p className="text-xs text-gray-300 mt-2 leading-relaxed">Maximum context size for large codebase projects.</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#2a2a3a]">
+              <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
                 <p className="text-xs text-gray-500">Changes take effect after reloading Codex and opening a new chat.</p>
                 <button
                   onClick={() => saveTokenProfile(tokenProfile)}
                   disabled={isActionLoading}
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Shield size={13} />}
                   Save Profile
