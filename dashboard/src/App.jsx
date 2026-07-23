@@ -563,6 +563,10 @@ function App() {
                       <span className="text-amber-400 font-bold">{healthData?.account_pool?.cooldown || 0}</span>
                     </div>
                     <div className="flex justify-between items-center bg-[#181824] p-3 rounded-xl border border-[#262636]">
+                      <span className="text-gray-400 font-sans">Disabled / Suspended:</span>
+                      <span className="text-rose-400 font-bold">{healthData?.account_pool?.disabled || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-[#181824] p-3 rounded-xl border border-[#262636]">
                       <span className="text-gray-400 font-sans">Max Capacity:</span>
                       <span className="text-blue-400 font-bold">25 Slots</span>
                     </div>
@@ -629,10 +633,22 @@ function App() {
                           {acc.workspace_name || acc.workspace_domain || (acc.workspace_id ? `Space (${acc.workspace_id.slice(0, 8)})` : `Workspace ${index + 1}`)}
                           {acc.workspace_id && <span className="text-[10px] font-mono text-gray-400 bg-[#222232] px-2 py-0.5 rounded border border-[#2a2a3a]">ID: {acc.workspace_id}</span>}
                         </div>
-                        <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-3">
+                        <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-3 flex-wrap">
                           <span>User: {acc.user_name || acc.user_email || acc.user_id || 'Configured User'}</span>
                           <span>•</span>
                           <span className="text-gray-500">{acc.accountPath ? acc.accountPath.split(/[\/\\]/).pop() : 'Account Slot'}</span>
+                          {acc.disabled && (
+                            <>
+                              <span>•</span>
+                              <span className="text-rose-400 font-semibold">{acc.disabledReason || 'Token Invalid or Suspended'}</span>
+                            </>
+                          )}
+                          {acc.cooldown && acc.lastError && (
+                            <>
+                              <span>•</span>
+                              <span className="text-amber-400">{acc.lastError}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -642,7 +658,7 @@ function App() {
                         acc.disabled ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
                         'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                       }`}>
-                        {acc.cooldown ? `Cooldown (${acc.retryAfter}s)` : acc.disabled ? 'Disabled' : 'Ready'}
+                        {acc.cooldown ? `Cooldown (${acc.retryAfter}s)` : acc.disabled ? 'Disabled / Suspended' : 'Ready'}
                       </span>
                       <button
                         onClick={() => handleDeleteAccount(acc)}

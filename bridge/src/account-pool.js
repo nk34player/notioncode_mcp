@@ -433,19 +433,27 @@ export class AccountPool {
     const now = this._time();
     slot.failures += 1;
     if (error instanceof NotionAgentError) {
-      if (error.code === ErrorCode.AUTH_INVALID || error.code === ErrorCode.PREMIUM_REQUIRED) {
+      if (error.code === ErrorCode.AUTH_INVALID) {
         slot.disabled = true;
+        slot.disabledReason = "Invalid Token / Authentication Failed";
+        slot.cooldownUntil = 0;
+      } else if (error.code === ErrorCode.PREMIUM_REQUIRED) {
+        slot.disabled = true;
+        slot.disabledReason = "Workspace Rate Limit / Plan Required";
         slot.cooldownUntil = 0;
       } else if (error.code === ErrorCode.TRUST_RULE_DENIED || error.retryable === false) {
         slot.cooldownUntil = now + DENIAL_COOLDOWN_MS;
+        slot.lastError = error.message || "Access Denied";
       } else {
         const seconds = Number.isFinite(error.retryAfter)
           ? Math.max(0, error.retryAfter)
           : TRANSIENT_COOLDOWN_MS / 1000;
         slot.cooldownUntil = now + seconds * 1000;
+        slot.lastError = error.message || "Transient Error";
       }
     } else {
       slot.cooldownUntil = now + TRANSIENT_COOLDOWN_MS;
+      slot.lastError = error?.message || String(error);
     }
     const circuitOpened = this._recordMatchingFailure(slot, error, now);
     await this._save();
@@ -560,6 +568,8 @@ export class AccountPool {
         available: !slot.busy && !slot.disabled && !cooldown,
         cooldown,
         disabled: slot.disabled,
+        disabledReason: slot.disabledReason || (slot.disabled ? "Invalid Token or Suspended" : null),
+        lastError: slot.lastError || null,
         retryAfter,
         assignments: slot.assignments,
         successes: slot.successes,
