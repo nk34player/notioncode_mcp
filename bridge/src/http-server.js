@@ -885,9 +885,19 @@ export function createBridgeRequestHandler({
               };
               const contentType = mimeTypes[ext] || "application/octet-stream";
               const fileContent = fs.readFileSync(filePath);
+              const cacheHeaders = ext === ".html"
+                ? {
+                    "cache-control": "no-cache, no-store, must-revalidate",
+                    pragma: "no-cache",
+                    expires: "0",
+                  }
+                : {
+                    "cache-control": "no-cache",
+                  };
               response.writeHead(200, {
                 "content-type": contentType,
                 "content-length": String(fileContent.length),
+                ...cacheHeaders,
               });
               response.end(fileContent);
               return;
