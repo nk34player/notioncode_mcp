@@ -503,7 +503,7 @@ export class AccountPool {
         slot: slot.slot,
         accountPath: slot.accountPath,
         workspace_id: slot.account.space_id,
-        workspace_name: slot.account.space_name || "",
+        workspace_name: slot.account.space_name || slot.account.space_domain || (slot.account.space_id ? `Space (${slot.account.space_id.slice(0, 8)})` : ""),
         workspace_domain: slot.account.space_domain || "",
         user_id: slot.account.user_id,
         user_name: slot.account.user_name || "",

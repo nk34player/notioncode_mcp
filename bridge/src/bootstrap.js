@@ -150,6 +150,25 @@ export function extractUser(payload) {
   };
 }
 
+function parseRecordName(val) {
+  if (!val) return "";
+  if (typeof val === "string") return val.trim();
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => {
+        if (Array.isArray(item)) return item[0] || "";
+        if (item && typeof item === "object") return item.text || item.name || "";
+        return String(item || "");
+      })
+      .join("")
+      .trim();
+  }
+  if (typeof val === "object") {
+    return String(val.name || val.text || val.title || "").trim();
+  }
+  return String(val).trim();
+}
+
 export function extractWorkspaces(payload) {
   const viewBySpace = new Map();
   for (const [recordId, envelope] of tableEntries(payload, "space_view")) {
@@ -165,11 +184,17 @@ export function extractWorkspaces(payload) {
     if (!value) continue;
     const spaceId = value.id || recordId;
     if (!spaceId) continue;
+    const name =
+      parseRecordName(value.name) ||
+      parseRecordName(value.space_name) ||
+      parseRecordName(value.title) ||
+      "";
+    const domain = parseRecordName(value.domain) || "";
     workspaces.push({
       space_id: spaceId,
       space_view_id: viewBySpace.get(spaceId) || null,
-      space_name: value.name || "",
-      domain: value.domain || "",
+      space_name: name,
+      domain: domain,
     });
   }
 

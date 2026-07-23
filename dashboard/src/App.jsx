@@ -513,7 +513,7 @@ function App() {
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-gray-200 flex items-center gap-2">
-                          {acc.workspace_name || acc.workspace_domain || `Workspace ${index + 1}`}
+                          {acc.workspace_name || acc.workspace_domain || (acc.workspace_id ? `Space (${acc.workspace_id.slice(0, 8)})` : `Workspace ${index + 1}`)}
                           {acc.workspace_id && <span className="text-[10px] font-mono text-gray-400 bg-[#222232] px-2 py-0.5 rounded">ID: {acc.workspace_id}</span>}
                         </div>
                         <div className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-3">
