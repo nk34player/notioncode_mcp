@@ -36,7 +36,8 @@ function App() {
   const [isServerRunning, setIsServerRunning] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [notification, setNotification] = useState(null);
 
   const logEndRef = useRef(null);
@@ -200,9 +201,7 @@ function App() {
       try {
         res = await fetch('/v1/accounts', request());
       } catch {
-        res = await fetch('http://127.0.0.1:8765/v1/accounts', {
-          ...request(),
-        });
+        res = await fetch('http://127.0.0.1:8765/v1/accounts', { ...request() });
       }
       if (res.ok) {
         const data = await res.json();
@@ -213,7 +212,7 @@ function App() {
           : `All ${skipped} workspace${skipped === 1 ? ' was' : 's were'} already configured`;
         showNotify('success', message);
         addLog('info', message);
-        setShowAddAccountModal(false);
+        setShowAddForm(false);
         setTokenInput('');
         await fetchStatus();
       } else {
@@ -226,6 +225,31 @@ function App() {
       addLog('error', err.message);
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (accountId) => {
+    if (!accountId) return;
+    setDeletingId(accountId);
+    try {
+      let res;
+      try {
+        res = await fetch(`/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+      } catch {
+        res = await fetch(`http://127.0.0.1:8765/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+      }
+      if (res.ok) {
+        showNotify('success', 'Account removed successfully.');
+        addLog('info', `Account removed: ${accountId}`);
+        await fetchStatus();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotify('error', 'Failed to remove account: ' + (err.error || res.status));
+      }
+    } catch (err) {
+      showNotify('error', 'Failed to remove account: ' + err.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -324,12 +348,6 @@ function App() {
                 {notification.message}
               </div>
             )}
-            <button
-              onClick={() => setShowAddAccountModal(true)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/20 transition-all hover:scale-105 active:scale-95"
-            >
-              <Plus size={15} /> Add Notion Account
-            </button>
             <button
               onClick={handleServerToggle}
               disabled={isActionLoading}
@@ -435,12 +453,40 @@ function App() {
                   <p className="text-xs text-gray-400 mt-0.5">Supports up to 25 unique workspace accounts with automated failover and round-robin load balancing.</p>
                 </div>
                 <button
-                  onClick={() => setShowAddAccountModal(true)}
+                  onClick={() => setShowAddForm((v) => !v)}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-all"
                 >
-                  <Plus size={14} /> Add Token
+                  {showAddForm ? <X size={14} /> : <Plus size={14} />}
+                  {showAddForm ? 'Cancel' : 'Add Account'}
                 </button>
               </div>
+
+              {/* Inline add form */}
+              {showAddForm && (
+                <form onSubmit={handleAddAccountSubmit} className="bg-[#181824] border border-purple-500/30 rounded-xl p-4 space-y-3">
+                  <div className="text-xs font-semibold text-purple-300 flex items-center gap-2">
+                    <Plus size={13} /> Add Notion Account
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 value or browser cookie</label>
+                    <input
+                      type="password"
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      placeholder="Paste the token_v2 value or cookie..."
+                      className="w-full bg-[#0f0f18] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => { setShowAddForm(false); setTokenInput(''); }} className="px-4 py-2 rounded-xl bg-[#1e1e2e] text-gray-300 text-xs font-semibold">Cancel</button>
+                    <button type="submit" disabled={isActionLoading} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2">
+                      {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Save Account
+                    </button>
+                  </div>
+                </form>
+              )}
 
               <div className="space-y-3 pt-2">
                 {(healthData?.account_pool?.accounts || []).map((acc, index) => (
@@ -461,7 +507,7 @@ function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
                         acc.cooldown ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                         acc.disabled ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
@@ -469,6 +515,14 @@ function App() {
                       }`}>
                         {acc.cooldown ? `Cooldown (${acc.retryAfter}s)` : acc.disabled ? 'Disabled' : 'Ready'}
                       </span>
+                      <button
+                        onClick={() => handleDeleteAccount(acc.id)}
+                        disabled={deletingId === acc.id}
+                        title="Remove account"
+                        className="p-2 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all disabled:opacity-40"
+                      >
+                        {deletingId === acc.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -561,35 +615,6 @@ function App() {
           )}
         </div>
       </div>
-
-      {/* Add Account Modal */}
-      {showAddAccountModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#2a2a3a] pb-3">
-              <h3 className="text-base font-semibold text-white">Add Notion Account</h3>
-              <button onClick={() => setShowAddAccountModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
-            </div>
-            <form onSubmit={handleAddAccountSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 value or browser cookie</label>
-                <input
-                  type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Paste the token_v2 value or cookie..."
-                  className="w-full bg-[#181824] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowAddAccountModal(false)} className="px-4 py-2 rounded-xl bg-[#1e1e2e] text-gray-300 text-xs font-semibold">Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold">Save Account</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

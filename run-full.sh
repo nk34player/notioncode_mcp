@@ -466,10 +466,32 @@ launch_dashboard() {
 
     local dashboard_dir="${ROOT}/dashboard"
     local dist_index="${dashboard_dir}/dist/index.html"
+    local checksum_file="${dashboard_dir}/dist/.src-checksum"
 
-    if [[ ! -f "${dist_index}" ]]; then
-        echo "[>] Building dashboard static assets..."
-        (cd "${dashboard_dir}" && npm run build) || return 1
+    # Compute a checksum of all dashboard source files + package.json
+    # (find + sha256 to detect any change in src/)
+    local current_checksum=""
+    if command -v sha256sum >/dev/null 2>&1; then
+        current_checksum=$(find "${dashboard_dir}/src" "${dashboard_dir}/package.json" \
+            -type f | sort | xargs sha256sum 2>/dev/null | sha256sum | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        current_checksum=$(find "${dashboard_dir}/src" "${dashboard_dir}/package.json" \
+            -type f | sort | xargs shasum -a 256 2>/dev/null | shasum -a 256 | awk '{print $1}')
+    fi
+
+    local saved_checksum=""
+    [[ -f "${checksum_file}" ]] && saved_checksum=$(cat "${checksum_file}")
+
+    if [[ ! -f "${dist_index}" ]] || [[ -n "${current_checksum}" && "${current_checksum}" != "${saved_checksum}" ]]; then
+        echo "[>] Dashboard source changed — rebuilding static assets..."
+        if (cd "${dashboard_dir}" && npm install --silent 2>/dev/null; npm run build); then
+            # Save the new checksum after a successful build
+            [[ -n "${current_checksum}" ]] && printf '%s' "${current_checksum}" > "${checksum_file}"
+        else
+            echo "[!] Dashboard build failed; continuing with existing dist if present."
+        fi
+    else
+        echo "[✓] Dashboard is up to date; skipping rebuild."
     fi
 
     (

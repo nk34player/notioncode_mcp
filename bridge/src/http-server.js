@@ -838,6 +838,32 @@ export function createBridgeRequestHandler({
           return;
         }
         default: {
+          // DELETE /v1/accounts/:id — remove account file and reload pool
+          if (request.method === "DELETE" && requestPath.startsWith("/v1/accounts/")) {
+            const accountId = decodeURIComponent(requestPath.slice("/v1/accounts/".length));
+            if (!accountId) {
+              sendJson(response, 400, { error: "account id is required" });
+              return;
+            }
+            // find the slot by id
+            const slot = accountPool?.status().accounts.find((a) => a.id === accountId);
+            if (!slot) {
+              sendJson(response, 404, { error: "Account not found" });
+              return;
+            }
+            const accountFilePath = slot.accountPath;
+            if (!accountFilePath || !fs.existsSync(accountFilePath)) {
+              sendJson(response, 404, { error: "Account file not found on disk" });
+              return;
+            }
+            fs.rmSync(accountFilePath, { force: true });
+            diagnostic("account_removed", { account_id: accountId, path: accountFilePath });
+            if (typeof accountPool?.refresh === "function") {
+              await accountPool.refresh();
+            }
+            sendJson(response, 200, { ok: true, removed: accountId });
+            return;
+          }
           if (request.method === "GET" && (requestPath === "/dashboard" || requestPath.startsWith("/dashboard/") || requestPath.startsWith("/assets/"))) {
             const dashboardDist = path.join(process.cwd(), "dashboard", "dist");
             let relativePath = requestPath.startsWith("/assets/")

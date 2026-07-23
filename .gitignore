@@ -26,3 +26,6 @@
 .DS_Store
 .idea/
 .vscode/
+
+# Dashboard auto-build state
+dashboard/dist/.src-checksum
