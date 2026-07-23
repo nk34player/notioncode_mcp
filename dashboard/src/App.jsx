@@ -191,10 +191,36 @@ function App() {
     setIsActionLoading(true);
     addLog('info', 'Adding new Notion token_v2 account...');
     try {
-      showNotify('success', 'Account token submitted successfully!');
-      setShowAddAccountModal(false);
-      setTokenInput('');
-      fetchStatus();
+      const request = () => ({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenInput.trim() }),
+      });
+      let res;
+      try {
+        res = await fetch('/v1/accounts', request());
+      } catch {
+        res = await fetch('http://127.0.0.1:8765/v1/accounts', {
+          ...request(),
+        });
+      }
+      if (res.ok) {
+        const data = await res.json();
+        const created = Number(data.created_count || 0);
+        const skipped = Number(data.skipped_count || 0);
+        const message = created > 0
+          ? `Added ${created} workspace${created === 1 ? '' : 's'}${skipped > 0 ? `; ${skipped} already configured` : ''}`
+          : `All ${skipped} workspace${skipped === 1 ? ' was' : 's were'} already configured`;
+        showNotify('success', message);
+        addLog('info', message);
+        setShowAddAccountModal(false);
+        setTokenInput('');
+        await fetchStatus();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotify('error', 'Failed to add account: ' + (err.error || res.statusText || res.status));
+        addLog('error', 'Failed to add account: ' + (err.error || res.statusText));
+      }
     } catch (err) {
       showNotify('error', 'Failed to add account: ' + err.message);
       addLog('error', err.message);
@@ -546,12 +572,12 @@ function App() {
             </div>
             <form onSubmit={handleAddAccountSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 Cookie</label>
+                <label className="block text-xs font-medium text-gray-300 mb-1">Notion token_v2 value or browser cookie</label>
                 <input
                   type="password"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Paste token_v2 here..."
+                  placeholder="Paste the token_v2 value or cookie..."
                   className="w-full bg-[#181824] border border-[#2a2a3a] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
                   required
                 />

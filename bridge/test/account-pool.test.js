@@ -271,6 +271,34 @@ test("account discovery is ordered and assigns isolated thread directories", asy
   }
 });
 
+test("refresh adds newly saved workspaces without disturbing live slots", async () => {
+  const home = await mkdtemp(path.join(tmpdir(), "notioncode-refresh-"));
+  try {
+    await writeAccount(path.join(home, "notion_account.json"), "token-main", "user-main");
+    const pool = await AccountPool.create({
+      home,
+      statePath: path.join(home, "pool-state.json"),
+      diagnostic: () => {},
+    });
+    const originalSlot = pool.slots[0];
+    const originalProvider = { name: "live-provider" };
+    originalSlot.provider = originalProvider;
+    originalSlot.busy = true;
+
+    await writeAccount(path.join(home, "accounts", "second.json"), "token-second", "user-second");
+    const status = await pool.refresh();
+
+    assert.equal(status.configured, 2);
+    assert.equal(pool.slots[0], originalSlot);
+    assert.equal(pool.slots[0].provider, originalProvider);
+    assert.equal(pool.slots[0].busy, true);
+    assert.equal(pool.slots[1].account.user_id, "user-second");
+    assert.equal(pool.slots[1].busy, false);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test("account discovery excludes invalid and duplicate sessions", async () => {
   const home = await mkdtemp(path.join(tmpdir(), "notioncode-accounts-"));
   try {

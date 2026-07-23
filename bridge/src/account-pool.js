@@ -208,6 +208,43 @@ export class AccountPool {
     for (const resolve of waiters) resolve();
   }
 
+  async refresh() {
+    const discovery = await discoverAccounts(this.home);
+    const added = await this.mutex.run("pool", async () => {
+      if (this.closed) {
+        throw new AccountPoolError("Account pool is closed.", { code: "pool_closed" });
+      }
+      const existing = new Set(this.slots.map((slot) => slot.id));
+      const newEntries = discovery.accounts.filter((entry) => !existing.has(entry.id));
+      for (const entry of newEntries) {
+        this.slots.push({
+          ...entry,
+          slot: this.slots.length,
+          provider: null,
+          providerPromise: null,
+          busy: false,
+          assignments: 0,
+          successes: 0,
+          failures: 0,
+          lastAssignedAt: null,
+          cooldownUntil: 0,
+          disabled: false,
+        });
+      }
+      this.discovery = discovery;
+      return newEntries.length;
+    });
+    if (added > 0) this._wakeWaiters();
+    this.diagnostic("account_pool_refreshed", {
+      added,
+      configured: this.slots.length,
+      discovered: discovery.discovered,
+      invalid: discovery.invalid.length,
+      duplicates: discovery.duplicates.length,
+    });
+    return this.status();
+  }
+
   async _acquire(options = {}) {
     const attempted = options.attempted ?? new Set();
     const preferredAccountId = options.preferredAccountId ?? null;

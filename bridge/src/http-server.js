@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { defaultAccountHome, parseBrowserCookie } from "./account.js";
 import { AccountPoolError, MAX_ACCOUNTS, MAX_REASONING_EFFORT } from "./account-pool.js";
 import { createAgentOrchestrator } from "./agent-orchestrator.js";
 import { itemFingerprints } from "./conversation-segments.js";
@@ -13,6 +14,8 @@ import {
   withDiagnosticContext,
   writeDiagnostic,
 } from "./diagnostics.js";
+import { ErrorCode, NotionAgentError } from "./errors.js";
+import { initializeAllWorkspaces, parseInitCredential } from "./init.js";
 import {
   CHAT_SSE_DONE,
   MODEL_ID,
@@ -50,6 +53,7 @@ import {
   requestFingerprint,
   responseInputCount,
 } from "./turn-affinity.js";
+import { createImpitTransport } from "./transport.js";
 
 export const BRIDGE_HOST = "127.0.0.1";
 export const BRIDGE_PORT = 8765;
@@ -220,9 +224,11 @@ function responsePayload(text, model, inputTokens, outputTokens, tools, fingerpr
     now: () => Math.floor(now() / 1000),
   });
 }
-
 export function createBridgeRequestHandler({
   accountPool = null,
+  accountHome = defaultAccountHome(),
+  initializeWorkspaces = initializeAllWorkspaces,
+  accountTransport = createImpitTransport(),
   turnAffinities,
   conversationSegments,
   workflowId = "",
@@ -727,6 +733,62 @@ export function createBridgeRequestHandler({
         case "POST /v1/messages/count_tokens": {
           const body = await readJson(request);
           sendJson(response, 200, { input_tokens: estimateAnthropicTokens(body) });
+          return;
+        }
+        case "POST /v1/accounts": {
+          const body = await readJson(request);
+          const credentialInput = String(body?.token ?? "").trim();
+          if (!credentialInput) {
+            sendJson(response, 400, { error: "token is required" });
+            return;
+          }
+          try {
+            const credential = parseBrowserCookie(credentialInput).has("token_v2")
+              ? parseInitCredential({ cookie: credentialInput })
+              : parseInitCredential({ tokenV2: credentialInput });
+            const result = await initializeWorkspaces({
+              accountHome,
+              credential,
+              transport: accountTransport,
+            });
+            if (result.created.length > 0 && typeof accountPool?.refresh === "function") {
+              await accountPool.refresh();
+            }
+            const createdWorkspaces = result.created.map(({ summary }) => ({
+              workspace_id: summary.workspace_id,
+              workspace_name: summary.workspace_name,
+              workspace_domain: summary.workspace_domain,
+              user_id: summary.user_id,
+              user_name: summary.user_name,
+              user_email: summary.user_email,
+            }));
+            const skippedWorkspaces = result.skipped.map((summary) => ({
+              workspace_id: summary.workspace_id,
+              workspace_name: summary.workspace_name,
+            }));
+            diagnostic("account_initialization_completed", {
+              discovered_workspaces: result.discovered_workspaces,
+              created_count: createdWorkspaces.length,
+              skipped_count: skippedWorkspaces.length,
+            });
+            sendJson(response, 200, {
+              ok: true,
+              discovered_workspaces: result.discovered_workspaces,
+              created_count: createdWorkspaces.length,
+              skipped_count: skippedWorkspaces.length,
+              created_workspaces: createdWorkspaces,
+              skipped_workspaces: skippedWorkspaces,
+            });
+          } catch (error) {
+            const code = error instanceof NotionAgentError ? error.code : "account_initialization_failed";
+            const authenticationFailed = code === ErrorCode.AUTH_INVALID;
+            diagnostic("account_initialization_failed", { error_code: code });
+            sendJson(response, authenticationFailed ? 401 : 400, {
+              error: authenticationFailed
+                ? "Notion authentication failed."
+                : "Failed to initialize Notion workspaces.",
+            });
+          }
           return;
         }
         case "POST /v1/messages": {
