@@ -207,9 +207,15 @@ function App() {
         const data = await res.json();
         const created = Number(data.created_count || 0);
         const skipped = Number(data.skipped_count || 0);
-        const message = created > 0
-          ? `Added ${created} workspace${created === 1 ? '' : 's'}${skipped > 0 ? `; ${skipped} already configured` : ''}`
-          : `All ${skipped} workspace${skipped === 1 ? ' was' : 's were'} already configured`;
+        let message = "";
+        if (created > 0) {
+          const names = (data.created_workspaces || [])
+            .map((w) => w.workspace_name || w.workspace_domain || 'Workspace')
+            .join(', ');
+          message = `Added ${created} workspace${created === 1 ? '' : 's'} (${names})${skipped > 0 ? `; ${skipped} already configured` : ''}`;
+        } else {
+          message = `All ${skipped} workspace${skipped === 1 ? ' was' : 's were'} already configured`;
+        }
         showNotify('success', message);
         addLog('info', message);
         setShowAddForm(false);

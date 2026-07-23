@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [ValidateSet("Menu", "Start", "Stop", "Status", "CheckAccounts", "AddAccount",
                  "RefreshClientVersion", "Settings", "Install", "Verify", "OpenCode")]
@@ -652,11 +652,48 @@ function Invoke-Dashboard {
 
     $DashboardDir = Join-Path $Root "dashboard"
     $DistIndex = Join-Path $DashboardDir "dist\index.html"
+    $ChecksumFile = Join-Path $DashboardDir "dist\.src-checksum"
 
-    if (-not (Test-Path $DistIndex)) {
-        Write-Host "[>] Building dashboard static assets..." -ForegroundColor Cyan
+    # Compute SHA256 checksum of all src/ files + package.json
+    $srcDir = Join-Path $DashboardDir "src"
+    $pkgJson = Join-Path $DashboardDir "package.json"
+    $srcFiles = @()
+    if (Test-Path $srcDir) {
+        $srcFiles += @(Get-ChildItem -LiteralPath $srcDir -Recurse -File | Sort-Object FullName)
+    }
+    if (Test-Path $pkgJson) {
+        $srcFiles += Get-Item -LiteralPath $pkgJson
+    }
+
+    $combinedHash = ""
+    if ($srcFiles.Count -gt 0) {
+        $hasher = [System.Security.Cryptography.SHA256]::Create()
+        $allBytes = [System.Text.StringBuilder]::new()
+        foreach ($f in $srcFiles) {
+            $hash = [BitConverter]::ToString($hasher.ComputeHash([System.IO.File]::ReadAllBytes($f.FullName))) -replace '-',''
+            [void]$allBytes.AppendLine("$hash  $($f.FullName)")
+        }
+        $combinedHash = [BitConverter]::ToString(
+            $hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($allBytes.ToString()))
+        ) -replace '-',''
+        $hasher.Dispose()
+    }
+
+    $savedHash = if (Test-Path $ChecksumFile) { (Get-Content -LiteralPath $ChecksumFile -Raw).Trim() } else { "" }
+
+    if (-not (Test-Path $DistIndex) -or ($combinedHash -and $combinedHash -ne $savedHash)) {
+        Write-Host "[>] Dashboard source changed — rebuilding static assets..." -ForegroundColor Cyan
+        & npm.cmd --prefix $DashboardDir install --silent 2>$null
         & npm.cmd --prefix $DashboardDir run build
-        if ($LASTEXITCODE -ne 0) { throw "Dashboard build failed." }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[!] Dashboard build failed; continuing with existing dist if present." -ForegroundColor Yellow
+        } else {
+            if ($combinedHash) {
+                Set-Content -LiteralPath $ChecksumFile -Value $combinedHash -NoNewline -Encoding ASCII
+            }
+        }
+    } else {
+        Write-Host "[✓] Dashboard is up to date; skipping rebuild." -ForegroundColor Green
     }
 
     Invoke-StartServer

@@ -494,16 +494,14 @@ launch_dashboard() {
         echo "[✓] Dashboard is up to date; skipping rebuild."
     fi
 
-    (
-        sleep 2
-        if command -v open >/dev/null 2>&1; then
-            open "http://127.0.0.1:${bridge_port}/dashboard"
-        elif command -v xdg-open >/dev/null 2>&1; then
-            xdg-open "http://127.0.0.1:${bridge_port}/dashboard"
-        fi
-    ) &
-
     start_services
+
+    # Open dashboard URL only after server listeners are ready
+    if command -v open >/dev/null 2>&1; then
+        open "http://127.0.0.1:${bridge_port}/dashboard" &
+    elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "http://127.0.0.1:${bridge_port}/dashboard" &
+    fi
 }
 
 # ── Launch Dashboard ───────────────────────────────────────────────────────────
