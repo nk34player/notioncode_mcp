@@ -80,11 +80,12 @@ export function formatDiagnostic(record, { color = false } = {}) {
     ? `${levelColor(level)}${levelLabel}${ANSI.reset}`
     : levelLabel;
   const event = color ? `${ANSI.cyan}${record.event}${ANSI.reset}` : record.event;
+  const service = record.service || "bridge";
   const fields = Object.entries(record)
-    .filter(([key]) => key !== "event")
+    .filter(([key]) => key !== "event" && key !== "service")
     .map(([key, value]) => `${key}=${fieldText(value)}`)
     .join(" ");
-  return `${prefix} [bridge] ${event}${fields ? ` ${fields}` : ""}`;
+  return `${prefix} [${service}] ${event}${fields ? ` ${fields}` : ""}`;
 }
 
 const RECENT_DIAGNOSTICS_MAX = 500;

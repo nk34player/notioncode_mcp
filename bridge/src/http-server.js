@@ -659,8 +659,25 @@ export function createBridgeRequestHandler({
       `${startedAt}:${requestSequence += 1}:${method}:${requestPath}`,
     );
 
-    const isQuietPoll = requestPath === "/healthz" || requestPath === "/v1/logs";
-    return withDiagnosticContext({ request_id: requestId }, async () => {
+    const isDashboardEndpoint = (path) => (
+      path === "/healthz" ||
+      path === "/v1/logs" ||
+      path === "/v1/models" ||
+      path.startsWith("/v1/accounts") ||
+      path.startsWith("/v1/settings") ||
+      path.startsWith("/v1/server") ||
+      path === "/dashboard" ||
+      path.startsWith("/dashboard/") ||
+      path.startsWith("/assets/")
+    );
+
+    const service = isDashboardEndpoint(requestPath) ? "dashboard" : "bridge";
+    const isQuietPoll =
+      requestPath === "/healthz" ||
+      requestPath === "/v1/logs" ||
+      requestPath === "/v1/settings/token-profile";
+
+    return withDiagnosticContext({ request_id: requestId, service }, async () => {
       if (!isQuietPoll) {
         diagnostic("request_started", {
           request_id: requestId,
