@@ -668,6 +668,10 @@ export function createBridgeRequestHandler({
             conversation_segments: await Promise.resolve(conversationSegments.status()),
             custom_agent: Boolean(workflowId),
             external_agent_loop: !workflowId,
+          }, {
+            "cache-control": "no-cache, no-store, must-revalidate",
+            pragma: "no-cache",
+            expires: "0",
           });
           return;
         }
@@ -881,10 +885,13 @@ export function createBridgeRequestHandler({
               return;
             }
 
+            let updatedPool = null;
             if (typeof accountPool?.refresh === "function") {
-              await accountPool.refresh();
+              updatedPool = await accountPool.refresh();
+            } else if (accountPool) {
+              updatedPool = accountPool.status();
             }
-            sendJson(response, 200, { ok: true, removed: target });
+            sendJson(response, 200, { ok: true, removed: target, account_pool: updatedPool });
             return;
           }
           if (request.method === "GET" && (requestPath === "/dashboard" || requestPath.startsWith("/dashboard/") || requestPath.startsWith("/assets/"))) {

@@ -55,8 +55,10 @@ function App() {
   // Fetch status & health from local REST API
   const fetchStatus = useCallback(async () => {
     try {
-      let res = await fetch('/healthz');
-      if (!res.ok) res = await fetch('http://127.0.0.1:8765/healthz');
+      const url = `/healthz?_=${Date.now()}`;
+      const opts = { cache: 'no-store' };
+      let res = await fetch(url, opts);
+      if (!res.ok) res = await fetch(`http://127.0.0.1:8765${url}`, opts);
       if (res.ok) {
         const data = await res.json();
         setHealthData(data);
@@ -71,8 +73,8 @@ function App() {
 
   const fetchModels = useCallback(async () => {
     try {
-      let res = await fetch('/v1/models');
-      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/models');
+      let res = await fetch('/v1/models', { cache: 'no-store' });
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/models', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setModelsData(data.data || []);
@@ -84,8 +86,8 @@ function App() {
 
   const fetchLogs = useCallback(async () => {
     try {
-      let res = await fetch('/v1/logs');
-      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/logs');
+      let res = await fetch('/v1/logs', { cache: 'no-store' });
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/logs', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.logs)) {
@@ -99,8 +101,8 @@ function App() {
 
   const fetchTokenProfile = useCallback(async () => {
     try {
-      let res = await fetch('/v1/settings/token-profile');
-      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/settings/token-profile');
+      let res = await fetch('/v1/settings/token-profile', { cache: 'no-store' });
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/settings/token-profile', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.profile === 'safe' || data.profile === 'extreme') {
@@ -154,7 +156,7 @@ function App() {
       if (activeTab === 'logs') {
         fetchLogs();
       }
-    }, 10000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [fetchStatus, fetchModels, fetchLogs, fetchTokenProfile, activeTab]);
 
@@ -244,26 +246,51 @@ function App() {
     }
     setDeletingId(accountId);
     addLog('info', `Deleting account: ${accountId}`);
+
+    // Optimistically remove from state immediately
+    setHealthData((prev) => {
+      if (!prev?.account_pool?.accounts) return prev;
+      const remaining = prev.account_pool.accounts.filter((a) => {
+        const pathLeaf = a.accountPath ? a.accountPath.split(/[\/\\]/).pop() : '';
+        return a.id !== accountId && a.workspace_id !== accountId && a.accountPath !== accountId && pathLeaf !== accountId;
+      });
+      return {
+        ...prev,
+        account_pool: {
+          ...prev.account_pool,
+          configured: remaining.length,
+          available: remaining.filter((a) => a.available).length,
+          accounts: remaining,
+        },
+      };
+    });
+
     try {
       let res;
       try {
-        res = await fetch(`/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+        res = await fetch(`/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE', cache: 'no-store' });
       } catch {
-        res = await fetch(`http://127.0.0.1:8765/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+        res = await fetch(`http://127.0.0.1:8765/v1/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE', cache: 'no-store' });
       }
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         showNotify('success', 'Account removed successfully.');
         addLog('info', `Account removed: ${accountId}`);
+        if (data.account_pool) {
+          setHealthData((prev) => (prev ? { ...prev, account_pool: data.account_pool } : prev));
+        }
         await fetchStatus();
       } else {
         const err = await res.json().catch(() => ({}));
         const errMsg = err.error || res.statusText || String(res.status);
         showNotify('error', 'Failed to remove account: ' + errMsg);
         addLog('error', 'Failed to remove account: ' + errMsg);
+        await fetchStatus();
       }
     } catch (err) {
       showNotify('error', 'Failed to remove account: ' + err.message);
       addLog('error', err.message);
+      await fetchStatus();
     } finally {
       setDeletingId(null);
     }
