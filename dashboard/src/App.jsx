@@ -171,18 +171,33 @@ function App() {
     setIsActionLoading(true);
     try {
       if (isServerRunning) {
-        showNotify('info', 'Stopping unified Node server...');
+        showNotify('info', 'Pausing bridge server services...');
+        let res;
         try {
-          let res = await fetch('/v1/server/stop', { method: 'POST' });
-          if (!res.ok) await fetch('http://127.0.0.1:8765/v1/server/stop', { method: 'POST' });
-        } catch {}
-        setIsServerRunning(false);
-        setHealthData(null);
-        showNotify('success', 'Server stopped successfully');
+          res = await fetch('/v1/server/stop', { method: 'POST', cache: 'no-store' });
+        } catch {
+          res = await fetch('http://127.0.0.1:8765/v1/server/stop', { method: 'POST', cache: 'no-store' });
+        }
+        if (res.ok) {
+          showNotify('success', 'Bridge server paused');
+          addLog('info', 'Bridge server paused from dashboard');
+        }
       } else {
-        showNotify('info', 'Starting server...');
-        await fetchStatus();
+        showNotify('info', 'Resuming bridge server services...');
+        let res;
+        try {
+          res = await fetch('/v1/server/start', { method: 'POST', cache: 'no-store' });
+        } catch {
+          res = await fetch('http://127.0.0.1:8765/v1/server/start', { method: 'POST', cache: 'no-store' });
+        }
+        if (res.ok) {
+          showNotify('success', 'Bridge server resumed');
+          addLog('info', 'Bridge server resumed from dashboard');
+        }
       }
+      await fetchStatus();
+    } catch (err) {
+      showNotify('error', 'Failed to toggle server: ' + err.message);
     } finally {
       setIsActionLoading(false);
     }

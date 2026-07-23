@@ -252,8 +252,14 @@ export function createBridgeRequestHandler({
     codeRoot: runtimeTools?.root ?? process.cwd(),
   });
   let requestSequence = 0;
+  let serverPaused = false;
 
   async function prepareChatCompletions(body) {
+    if (serverPaused) {
+      throw new ProtocolError(503, "Bridge server is currently paused from dashboard", {
+        code: "service_unavailable",
+      });
+    }
     const model = resolveBridgeModel(body?.model);
     const requestedModel = String(body?.model || model).toLowerCase();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
@@ -352,6 +358,11 @@ export function createBridgeRequestHandler({
   }
 
   async function executeAnthropicMessages(body) {
+    if (serverPaused) {
+      throw new ProtocolError(503, "Bridge server is currently paused from dashboard", {
+        code: "service_unavailable",
+      });
+    }
     const model = resolveBridgeModel(body?.model);
     const requestedModel = String(body?.model || model).toLowerCase();
     const poolStatus = accountPool
@@ -419,6 +430,11 @@ export function createBridgeRequestHandler({
   }
 
   async function executeResponses(rawBody, headers, { compaction = false } = {}) {
+    if (serverPaused) {
+      throw new ProtocolError(503, "Bridge server is currently paused from dashboard", {
+        code: "service_unavailable",
+      });
+    }
     const metadataBody = withCodexMetadata(rawBody, headers);
     const body = compaction
       ? { ...metadataBody, request_kind: "compaction" }
@@ -659,11 +675,12 @@ export function createBridgeRequestHandler({
             ? await Promise.resolve(accountPool.status())
             : { ...EMPTY_POOL_STATUS };
           sendJson(response, 200, {
-            ok: poolStatus.configured > 0,
+            ok: !serverPaused && poolStatus.configured > 0,
+            server_active: !serverPaused,
             model: MODEL_ID,
             models: [...SUPPORTED_MODELS],
             reasoning_effort: MAX_REASONING_EFFORT,
-            account_pool: poolStatus,
+            account_pool: serverPaused ? { ...poolStatus, available: 0 } : poolStatus,
             turn_affinity: await Promise.resolve(turnAffinities.status()),
             conversation_segments: await Promise.resolve(conversationSegments.status()),
             custom_agent: Boolean(workflowId),
@@ -682,10 +699,17 @@ export function createBridgeRequestHandler({
           sendJson(response, 200, { logs: getRecentDiagnostics() });
           return;
         case "POST /v1/server/stop":
-          sendJson(response, 200, { ok: true, message: "Server shutting down" });
-          setTimeout(() => {
-            process.exit(0);
-          }, 500);
+          serverPaused = true;
+          diagnostic("server_stopped", { paused: true });
+          sendJson(response, 200, { ok: true, server_active: false, message: "Bridge server paused" });
+          return;
+        case "POST /v1/server/start":
+          serverPaused = false;
+          if (typeof accountPool?.refresh === "function") {
+            await accountPool.refresh();
+          }
+          diagnostic("server_started", { paused: false });
+          sendJson(response, 200, { ok: true, server_active: true, message: "Bridge server resumed" });
           return;
         case "GET /v1/settings/token-profile": {
           const runtimeStateDir = path.join(process.cwd(), ".runtime");
