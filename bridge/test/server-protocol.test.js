@@ -147,3 +147,15 @@ test("compaction item is forwarded into a fresh segment", () => {
 
   assert.match(text, /checkpoint with image facts/);
 });
+
+test("extracts tool calls with raw string inputs such as apply_patch", () => {
+  const payloadText = 'Here is the patch:\n{"tool":"apply_patch","input":"*** Begin Patch\\n+ line\\nEnd Patch"}';
+  const tools = [{ type: "function", name: "apply_patch", parameters: { properties: { input: { type: "string" } } } }];
+  const { response, item } = buildResponsesPayload(payloadText, "fable-5", 10, 5, tools);
+
+  assert.equal(item.type, "function_call");
+  assert.equal(item.name, "apply_patch");
+  assert.match(item.arguments, /Begin Patch/);
+  assert.equal(response.end_turn, false);
+});
+

@@ -462,7 +462,7 @@ start_services() {
 launch_dashboard() {
     ensure_setup
     local bridge_port
-    bridge_port="$(bridge_port)"
+    bridge_port="${BRIDGE_PORT}"
 
     local dashboard_dir="${ROOT}/dashboard"
     local dist_index="${dashboard_dir}/dist/index.html"

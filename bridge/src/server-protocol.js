@@ -320,11 +320,93 @@ function responseJsonCandidates(text) {
   const candidates = [raw.trim()];
   if (raw.includes("```")) {
     for (const part of raw.split("```")) {
-      const candidate = part.trim().replace(/^json/, "").trim();
-      if (part.trim()) candidates.push(candidate);
+      const candidate = part.trim().replace(/^json/i, "").trim();
+      if (candidate) candidates.push(candidate);
+    }
+  }
+  let startIdx = raw.indexOf("{");
+  while (startIdx !== -1) {
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    let endIdx = -1;
+
+    for (let i = startIdx; i < raw.length; i++) {
+      const char = raw[i];
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (char === "\\") {
+        escape = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (char === "{") {
+          depth++;
+        } else if (char === "}") {
+          depth--;
+          if (depth === 0) {
+            endIdx = i;
+            break;
+          }
+        }
+      }
+    }
+
+    if (endIdx !== -1) {
+      const sub = raw.slice(startIdx, endIdx + 1).trim();
+      if (sub && !candidates.includes(sub)) {
+        candidates.push(sub);
+      }
+      startIdx = raw.indexOf("{", endIdx + 1);
+    } else {
+      startIdx = raw.indexOf("{", startIdx + 1);
     }
   }
   return candidates;
+}
+
+function normalizeToolArgs(value, tool = null) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const props = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (k !== "tool" && k !== "name") {
+      props[k] = v;
+    }
+  }
+
+  const keys = Object.keys(props);
+  if (keys.length === 0) return {};
+
+  if (keys.length === 1 && (props.arguments !== undefined || props.input !== undefined)) {
+    const keyUsed = props.arguments !== undefined ? "arguments" : "input";
+    const rawVal = props[keyUsed];
+    if (typeof rawVal === "string") {
+      try {
+        const parsed = JSON.parse(rawVal);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch {
+        if (keyUsed === "arguments") {
+          const schema = tool?.input_schema || tool?.parameters || tool?.function?.parameters;
+          const propKeys = schema?.properties ? Object.keys(schema.properties) : [];
+          const primaryKey = propKeys.length === 1 ? propKeys[0] : "input";
+          return { [primaryKey]: rawVal };
+        }
+      }
+    } else if (rawVal && typeof rawVal === "object" && !Array.isArray(rawVal)) {
+      return rawVal;
+    }
+  }
+
+  return props;
 }
 
 function anthropicTextContent(value) {
@@ -410,6 +492,11 @@ export function extractAnthropicToolCall(text, tools) {
       .filter((tool) => tool && typeof tool === "object" && typeof tool.name === "string")
       .map((tool) => tool.name),
   );
+  const byName = new Map(
+    (Array.isArray(tools) ? tools : [])
+      .filter((tool) => tool && typeof tool === "object" && typeof tool.name === "string")
+      .map((tool) => [tool.name, tool]),
+  );
   for (const candidate of responseJsonCandidates(text)) {
     let value;
     try {
@@ -419,9 +506,12 @@ export function extractAnthropicToolCall(text, tools) {
     }
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const name = value.tool ?? value.name;
-    const args = value.arguments ?? value.input ?? {};
-    if (allowed.has(name) && args && typeof args === "object" && !Array.isArray(args)) {
-      return { name: String(name), arguments: args };
+    if (allowed.has(name)) {
+      const tool = byName.get(String(name));
+      const args = normalizeToolArgs(value, tool);
+      if (args && typeof args === "object" && !Array.isArray(args)) {
+        return { name: String(name), arguments: args };
+      }
     }
   }
   return null;
@@ -541,14 +631,7 @@ export function extractResponseToolCall(text, tools) {
       }
       return { type: "custom", name: String(name), arguments: String(input) };
     }
-    let args = value.arguments ?? value.input ?? {};
-    if (typeof args === "string") {
-      try {
-        args = JSON.parse(args);
-      } catch {
-        continue;
-      }
-    }
+    const args = normalizeToolArgs(value, tool);
     if (args && typeof args === "object" && !Array.isArray(args)) {
       return { type: "function", name: String(name), arguments: pythonJsonDumps(args) };
     }

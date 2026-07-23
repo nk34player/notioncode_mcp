@@ -86,3 +86,29 @@ test("enables Notion MCP only after the credential gate passes", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("recovers from malformed or unclosed managed markers without error", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "notioncode-config-"));
+  try {
+    const config = path.join(directory, "config.toml");
+    const malformed = [
+      'service_tier = "default"',
+      "",
+      "# BEGIN notioncode_mcp managed root",
+      'model = "gpt-old"',
+      "",
+      "[marketplaces.openai-bundled]",
+      'source = "local"',
+    ].join("\n");
+
+    const output = install(config, malformed, "false");
+    assert.match(output, /service_tier = "default"/);
+    assert.match(output, /model = "gpt-5\.6-sol"/);
+    assert.match(output, /\[marketplaces\.openai-bundled]/);
+    assert.equal((output.match(/BEGIN notioncode_mcp managed root/g) || []).length, 1);
+    assert.equal((output.match(/END notioncode_mcp managed root/g) || []).length, 1);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
