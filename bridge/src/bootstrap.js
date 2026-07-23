@@ -18,12 +18,6 @@ function isObject(value) {
 export function unwrapRecord(input) {
   let current = input;
   for (let depth = 0; depth < 5 && isObject(current?.value); depth += 1) {
-    const keys = Object.keys(current);
-    const isEnvelope =
-      Object.hasOwn(current, "role") ||
-      keys.length === 1 ||
-      keys.every((key) => key === "role" || key === "type" || key === "value");
-    if (!isEnvelope) break;
     current = current.value;
   }
   return isObject(current) ? current : null;
