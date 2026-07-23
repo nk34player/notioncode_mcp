@@ -96,9 +96,55 @@ function App() {
     }
   }, []);
 
+  const fetchTokenProfile = useCallback(async () => {
+    try {
+      let res = await fetch('/v1/settings/token-profile');
+      if (!res.ok) res = await fetch('http://127.0.0.1:8765/v1/settings/token-profile');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profile === 'safe' || data.profile === 'extreme') {
+          setTokenProfile(data.profile);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const saveTokenProfile = async (profile) => {
+    setIsActionLoading(true);
+    try {
+      let res = await fetch('/v1/settings/token-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile }),
+      });
+      if (!res.ok) {
+        res = await fetch('http://127.0.0.1:8765/v1/settings/token-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profile }),
+        });
+      }
+      if (res.ok) {
+        setTokenProfile(profile);
+        showNotify('success', `Token profile set to ${profile === 'safe' ? 'Safe' : 'Extreme'}. Reload Codex to apply.`);
+        addLog('info', `Token profile updated to: ${profile}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotify('error', 'Failed to save token profile: ' + (err.error || res.status));
+      }
+    } catch (err) {
+      showNotify('error', 'Failed to save token profile: ' + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
     fetchModels();
+    fetchTokenProfile();
     if (activeTab === 'logs') {
       fetchLogs();
     }
@@ -109,7 +155,7 @@ function App() {
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [fetchStatus, fetchModels, fetchLogs, activeTab]);
+  }, [fetchStatus, fetchModels, fetchLogs, fetchTokenProfile, activeTab]);
 
   useEffect(() => {
     if (logEndRef.current) {
@@ -473,6 +519,17 @@ function App() {
                   <div className="text-xs text-purple-400 mt-1">256,000 context window • Auto-compact at 140,000</div>
                   <p className="text-xs text-gray-300 mt-2">Maximum context size for large codebase projects.</p>
                 </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#2a2a3a]">
+                <p className="text-xs text-gray-500">Changes take effect after reloading Codex and opening a new chat.</p>
+                <button
+                  onClick={() => saveTokenProfile(tokenProfile)}
+                  disabled={isActionLoading}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors flex items-center gap-2"
+                >
+                  {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Shield size={13} />}
+                  Save Profile
+                </button>
               </div>
             </div>
           )}

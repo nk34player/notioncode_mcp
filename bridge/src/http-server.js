@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { AccountPoolError, MAX_ACCOUNTS, MAX_REASONING_EFFORT } from "./account-pool.js";
 import { createAgentOrchestrator } from "./agent-orchestrator.js";
 import { itemFingerprints } from "./conversation-segments.js";
@@ -672,6 +674,56 @@ export function createBridgeRequestHandler({
             process.exit(0);
           }, 500);
           return;
+        case "GET /v1/settings/token-profile": {
+          const runtimeStateDir = path.join(process.cwd(), ".runtime");
+          const profilePath = path.join(runtimeStateDir, "token-profile");
+          let profile = "extreme";
+          try {
+            if (fs.existsSync(profilePath)) {
+              profile = fs.readFileSync(profilePath, "utf8").trim().toLowerCase() || "extreme";
+            }
+          } catch { /* ignore */ }
+          sendJson(response, 200, { profile });
+          return;
+        }
+        case "POST /v1/settings/token-profile": {
+          const body = await readJson(request);
+          const profile = String(body?.profile ?? "").toLowerCase();
+          if (profile !== "safe" && profile !== "extreme") {
+            sendJson(response, 400, { error: "profile must be 'safe' or 'extreme'" });
+            return;
+          }
+          const scriptDir = path.join(
+            path.dirname(fileURLToPath(import.meta.url)),
+            "..",
+            "..",
+            "scripts",
+          );
+          const runtimeStateDir = path.join(process.cwd(), ".runtime");
+          const codexHome = path.join(process.env.HOME ?? "~", ".codex");
+          const codexConfig = path.join(codexHome, "config.toml");
+          const catalogTemplate = path.join(process.cwd(), "config", "codex-models.json");
+          const openCodeConfig = path.join(runtimeStateDir, "opencode", "opencode.jsonc");
+          const scriptPath = path.join(scriptDir, "apply-token-profile.mjs");
+          await new Promise((resolve, reject) => {
+            const child = spawn(
+              process.execPath,
+              [scriptPath, runtimeStateDir, codexConfig, catalogTemplate, openCodeConfig, profile],
+              { stdio: ["ignore", "pipe", "pipe"] },
+            );
+            let out = "";
+            let err = "";
+            child.stdout.on("data", (d) => { out += d; });
+            child.stderr.on("data", (d) => { err += d; });
+            child.on("close", (code) => {
+              if (code === 0) resolve(out.trim());
+              else reject(new Error(err.trim() || `apply-token-profile exited with code ${code}`));
+            });
+            child.on("error", reject);
+          });
+          sendJson(response, 200, { ok: true, profile });
+          return;
+        }
         case "POST /v1/messages/count_tokens": {
           const body = await readJson(request);
           sendJson(response, 200, { input_tokens: estimateAnthropicTokens(body) });
