@@ -40,10 +40,10 @@ test("merges the provider without losing unrelated Codex settings", () => {
       'trust_level = "trusted"',
       "",
     ].join("\n"));
-    assert.match(output, /model = "gpt-5\.5"/);
+    assert.match(output, /model = "gpt-5\.6-sol"/);
     assert.match(output, /model_provider = "notion-ai"/);
-    assert.match(output, /model_context_window = 100000/);
-    assert.match(output, /model_auto_compact_token_limit = 60000/);
+    assert.match(output, /model_context_window = 256000/);
+    assert.match(output, /model_auto_compact_token_limit = 140000/);
     assert.match(output, /model_auto_compact_token_limit_scope = "total"/);
     assert.match(output, /tool_output_token_limit = 12000/);
     assert.match(output, /\[mcp_servers\.notion-private]/);
@@ -86,3 +86,29 @@ test("enables Notion MCP only after the credential gate passes", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("recovers from malformed or unclosed managed markers without error", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "notioncode-config-"));
+  try {
+    const config = path.join(directory, "config.toml");
+    const malformed = [
+      'service_tier = "default"',
+      "",
+      "# BEGIN notioncode_mcp managed root",
+      'model = "gpt-old"',
+      "",
+      "[marketplaces.openai-bundled]",
+      'source = "local"',
+    ].join("\n");
+
+    const output = install(config, malformed, "false");
+    assert.match(output, /service_tier = "default"/);
+    assert.match(output, /model = "gpt-5\.6-sol"/);
+    assert.match(output, /\[marketplaces\.openai-bundled]/);
+    assert.equal((output.match(/BEGIN notioncode_mcp managed root/g) || []).length, 1);
+    assert.equal((output.match(/END notioncode_mcp managed root/g) || []).length, 1);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+

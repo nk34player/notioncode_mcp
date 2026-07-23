@@ -57,13 +57,22 @@ function withoutManagedMarkers(value) {
   ];
   let result = value;
   for (const [begin, end] of blocks) {
-    const start = result.indexOf(begin);
-    if (start === -1) continue;
-    const finish = result.indexOf(end, start);
-    if (finish === -1) {
-      throw new Error(`Malformed Codex config: found ${begin} without ${end}`);
+    let start = result.indexOf(begin);
+    while (start !== -1) {
+      const finish = result.indexOf(end, start);
+      if (finish !== -1) {
+        result = result.slice(0, start) + result.slice(finish + end.length);
+      } else {
+        const nextTable = result.slice(start).search(/\r?\n\[/);
+        const cutTo = nextTable !== -1 ? start + nextTable + 1 : result.length;
+        result = result.slice(0, start) + result.slice(cutTo);
+      }
+      start = result.indexOf(begin);
     }
-    result = result.slice(0, start) + result.slice(finish + end.length);
+    result = result
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== end)
+      .join("\n");
   }
   return result;
 }
