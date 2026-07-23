@@ -417,21 +417,21 @@ function App() {
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               {/* Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 {[
                   { label: 'Bridge Server', value: isServerRunning ? 'Active' : 'Offline', icon: Server, color: isServerRunning ? 'text-emerald-400' : 'text-rose-400', badge: 'PORT 8765' },
                   { label: 'Notion Accounts', value: healthData?.account_pool?.configured ?? (isServerRunning ? '...' : '0'), icon: User, color: 'text-purple-400', badge: `${healthData?.account_pool?.available || 0} READY` },
                   { label: 'Max Account Pool', value: '25 Accounts', icon: Shield, color: 'text-blue-400', badge: 'ROUND-ROBIN' },
                   { label: 'Default Model', value: 'GPT-5.6 Sol', icon: Cpu, color: 'text-amber-400', badge: 'PRIMARY' },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-5 shadow-sm hover:border-[#3a3a4a] hover:scale-[1.01] transition-all">
+                  <div key={i} className="bg-[#12121a] border border-[#2a2a3a] rounded-2xl p-4 md:p-5 shadow-sm hover:border-[#3a3a4a] hover:scale-[1.01] transition-all">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-400">{stat.label}</span>
-                      <stat.icon size={20} className={stat.color} />
+                      <span className="text-xs font-medium text-gray-400 truncate">{stat.label}</span>
+                      <stat.icon size={18} className={`${stat.color} shrink-0 ml-1`} />
                     </div>
-                    <div className="flex items-baseline justify-between mt-3">
-                      <div className="text-2xl font-bold text-white tracking-tight">{stat.value}</div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#1c1c2b] text-gray-300 border border-[#2a2a3a] font-semibold">{stat.badge}</span>
+                    <div className="flex items-baseline justify-between mt-3 flex-wrap gap-1">
+                      <div className="text-xl md:text-2xl font-bold text-white tracking-tight truncate">{stat.value}</div>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[#1c1c2b] text-gray-300 border border-[#2a2a3a] font-semibold shrink-0">{stat.badge}</span>
                     </div>
                   </div>
                 ))}
