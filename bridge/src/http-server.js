@@ -711,6 +711,13 @@ export function createBridgeRequestHandler({
           diagnostic("server_started", { paused: false });
           sendJson(response, 200, { ok: true, server_active: true, message: "Bridge server resumed" });
           return;
+        case "POST /v1/server/kill":
+          diagnostic("server_killed", { exiting: true });
+          sendJson(response, 200, { ok: true, message: "Server process exiting..." });
+          setTimeout(() => {
+            process.exit(0);
+          }, 300);
+          return;
         case "GET /v1/settings/token-profile": {
           const runtimeStateDir = path.join(process.cwd(), ".runtime");
           const profilePath = path.join(runtimeStateDir, "token-profile");

@@ -3,7 +3,8 @@ import {
   Terminal,
   Key,
   Play,
-  Square,
+  Pause,
+  Power,
   RefreshCw,
   CheckCircle2,
   XCircle,
@@ -198,6 +199,33 @@ function App() {
       await fetchStatus();
     } catch (err) {
       showNotify('error', 'Failed to toggle server: ' + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleKillServer = async () => {
+    if (!window.confirm('Are you sure you want to completely kill the server process? This will terminate the running Node launcher.')) {
+      return;
+    }
+    setIsActionLoading(true);
+    showNotify('info', 'Killing server process...');
+    addLog('warning', 'Kill server process requested from dashboard');
+    try {
+      let res;
+      try {
+        res = await fetch('/v1/server/kill', { method: 'POST', cache: 'no-store' });
+      } catch {
+        res = await fetch('http://127.0.0.1:8765/v1/server/kill', { method: 'POST', cache: 'no-store' });
+      }
+      if (res.ok) {
+        setIsServerRunning(false);
+        setHealthData(null);
+        showNotify('error', 'Server process killed.');
+      }
+    } catch {
+      setIsServerRunning(false);
+      setHealthData(null);
     } finally {
       setIsActionLoading(false);
     }
@@ -409,14 +437,23 @@ function App() {
             <button
               onClick={handleServerToggle}
               disabled={isActionLoading}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 isServerRunning
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
                   : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
               }`}
             >
-              {isServerRunning ? <Square size={14} /> : <Play size={14} />}
-              {isServerRunning ? 'Stop Server' : 'Start Server'}
+              {isServerRunning ? <Pause size={14} /> : <Play size={14} />}
+              {isServerRunning ? 'Pause Server' : 'Resume Server'}
+            </button>
+            <button
+              onClick={handleKillServer}
+              disabled={isActionLoading}
+              title="Kill entire Node server process"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition-all cursor-pointer"
+            >
+              <Power size={14} />
+              Kill Server
             </button>
             <button
               onClick={() => { fetchStatus(); fetchModels(); }}
