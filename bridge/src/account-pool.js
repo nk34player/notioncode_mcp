@@ -141,6 +141,7 @@ export class AccountPool {
     this.waiters = new Set();
     this.failureHistory = new Map();
     this.circuitUntil = 0;
+    this._lastCircuitLoggedAt = 0;
     this.closed = false;
     this.slots = discovery.accounts.map((entry) => ({
       ...entry,
@@ -218,11 +219,20 @@ export class AccountPool {
       const discoveredMap = new Map(discovery.accounts.map((entry) => [entry.id, entry]));
       const initialCount = this.slots.length;
 
+      // Reset circuit breaker state on explicit pool refresh or account changes
+      this.circuitUntil = 0;
+      this.failureHistory.clear();
+      this._lastCircuitLoggedAt = 0;
+
       // Remove slots whose file no longer exists or is no longer discovered
       const remainingSlots = [];
       for (const slot of this.slots) {
         const existsOnDisk = slot.accountPath && fs.existsSync(slot.accountPath);
-        if (existsOnDisk && discoveredMap.has(slot.id)) {
+        const updatedEntry = discoveredMap.get(slot.id);
+        if (existsOnDisk && updatedEntry) {
+          slot.account = updatedEntry.account;
+          slot.disabled = false;
+          slot.cooldownUntil = 0;
           remainingSlots.push(slot);
         } else if (slot.provider) {
           try {
@@ -289,12 +299,16 @@ export class AccountPool {
         if (this.closed) throw new AccountPoolError("Account pool is closed.", { code: "pool_closed" });
         const now = this._time();
         if (this.circuitUntil > now) {
-          this.diagnostic("circuit_breaker_active", {
-            retry_after: retryAfterSeconds(this.circuitUntil - now),
-          });
+          const remainingSeconds = retryAfterSeconds(this.circuitUntil - now);
+          if (!this._lastCircuitLoggedAt || (now - this._lastCircuitLoggedAt >= 10000)) {
+            this._lastCircuitLoggedAt = now;
+            this.diagnostic("circuit_breaker_active", {
+              retry_after: remainingSeconds,
+            });
+          }
           throw new AccountPoolError("Account pool circuit breaker is open.", {
             code: "circuit_open",
-            retryAfter: retryAfterSeconds(this.circuitUntil - now),
+            retryAfter: remainingSeconds,
           });
         }
         if (this.slots.length === 0) {
