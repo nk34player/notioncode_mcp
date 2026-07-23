@@ -465,7 +465,16 @@ start_services() {
     echo "Streaming live logs (Press Ctrl+C to stop viewing logs; server will stay running):"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    tail -n 25 -f "${log_file}"
+    tail -n 25 -f "${log_file}" &
+    local TAIL_PID=$!
+    while kill -0 "${SERVER_PID}" 2>/dev/null; do
+        sleep 1
+    done
+    kill "${TAIL_PID}" 2>/dev/null || true
+    wait "${TAIL_PID}" 2>/dev/null || true
+    echo ""
+    echo "[!] Unified Node server process (PID ${SERVER_PID}) exited."
+    rm -f "${pid_file}"
 }
 
 launch_dashboard() {

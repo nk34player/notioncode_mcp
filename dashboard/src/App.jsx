@@ -40,6 +40,7 @@ function App() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [isKilled, setIsKilled] = useState(false);
 
   const logEndRef = useRef(null);
 
@@ -55,6 +56,7 @@ function App() {
 
   // Fetch status & health from local REST API
   const fetchStatus = useCallback(async () => {
+    if (isKilled) return;
     try {
       const url = `/healthz?_=${Date.now()}`;
       const opts = { cache: 'no-store' };
@@ -70,7 +72,7 @@ function App() {
     } catch {
       setIsServerRunning(false);
     }
-  }, []);
+  }, [isKilled]);
 
   const fetchModels = useCallback(async () => {
     try {
@@ -212,21 +214,17 @@ function App() {
     showNotify('info', 'Killing server process...');
     addLog('warning', 'Kill server process requested from dashboard');
     try {
-      let res;
       try {
-        res = await fetch('/v1/server/kill', { method: 'POST', cache: 'no-store' });
+        await fetch('/v1/server/kill', { method: 'POST', cache: 'no-store' });
       } catch {
-        res = await fetch('http://127.0.0.1:8765/v1/server/kill', { method: 'POST', cache: 'no-store' });
-      }
-      if (res.ok) {
-        setIsServerRunning(false);
-        setHealthData(null);
-        showNotify('error', 'Server process killed.');
+        await fetch('http://127.0.0.1:8765/v1/server/kill', { method: 'POST', cache: 'no-store' });
       }
     } catch {
+      // Ignore network drop when process exits
+    } finally {
       setIsServerRunning(false);
       setHealthData(null);
-    } finally {
+      setIsKilled(true);
       setIsActionLoading(false);
     }
   };
@@ -338,6 +336,37 @@ function App() {
       setDeletingId(null);
     }
   };
+
+  if (isKilled) {
+    return (
+      <div className="flex h-screen bg-[#0a0a0f] text-gray-100 font-sans items-center justify-center p-6 select-none">
+        <div className="bg-[#12121a] border border-rose-500/30 rounded-2xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto shadow-lg shadow-rose-500/10">
+            <Power size={32} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-white tracking-tight">Server Process Terminated</h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              The unified Node server process has been killed and shut down. The background shell process has exited. You may now close this browser tab.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                window.close();
+                setTimeout(() => {
+                  alert('Your browser blocked closing this tab automatically. Please close this tab manually.');
+                }, 300);
+              }}
+              className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-all shadow-lg shadow-rose-600/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <XCircle size={16} /> Close Browser Tab
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0f] text-gray-100 font-sans overflow-hidden">

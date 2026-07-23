@@ -309,10 +309,13 @@ function Invoke-StartServer {
     Write-Host "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Host ""
     try {
-        Get-Content -LiteralPath $LogFile -Wait -Tail 25
+        while (Get-Process -Id $serverPid -ErrorAction SilentlyContinue) {
+            Get-Content -LiteralPath $LogFile -Tail 25 -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+        }
     } finally {
         Write-Host ""
-        Write-Host "[>] Stopping the unified Node server..."
+        Write-Host "[!] Unified Node server process (PID $serverPid) exited."
         Invoke-StopServer
     }
 }
