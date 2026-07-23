@@ -299,6 +299,31 @@ test("refresh adds newly saved workspaces without disturbing live slots", async 
   }
 });
 
+test("refresh removes deleted workspaces from live slots", async () => {
+  const home = await mkdtemp(path.join(tmpdir(), "notioncode-refresh-delete-"));
+  try {
+    const mainFile = path.join(home, "notion_account.json");
+    const secondFile = path.join(home, "accounts", "second.json");
+    await writeAccount(mainFile, "token-main", "user-main");
+    await writeAccount(secondFile, "token-second", "user-second");
+    const pool = await AccountPool.create({
+      home,
+      statePath: path.join(home, "pool-state.json"),
+      diagnostic: () => {},
+    });
+    assert.equal(pool.slots.length, 2);
+
+    await rm(secondFile, { force: true });
+    const status = await pool.refresh();
+
+    assert.equal(status.configured, 1);
+    assert.equal(pool.slots.length, 1);
+    assert.equal(pool.slots[0].account.user_id, "user-main");
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test("account discovery excludes invalid and duplicate sessions", async () => {
   const home = await mkdtemp(path.join(tmpdir(), "notioncode-accounts-"));
   try {

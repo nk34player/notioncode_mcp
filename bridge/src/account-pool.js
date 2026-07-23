@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -210,33 +211,66 @@ export class AccountPool {
 
   async refresh() {
     const discovery = await discoverAccounts(this.home);
-    const added = await this.mutex.run("pool", async () => {
+    const { added, removed } = await this.mutex.run("pool", async () => {
       if (this.closed) {
         throw new AccountPoolError("Account pool is closed.", { code: "pool_closed" });
       }
-      const existing = new Set(this.slots.map((slot) => slot.id));
-      const newEntries = discovery.accounts.filter((entry) => !existing.has(entry.id));
-      for (const entry of newEntries) {
-        this.slots.push({
-          ...entry,
-          slot: this.slots.length,
-          provider: null,
-          providerPromise: null,
-          busy: false,
-          assignments: 0,
-          successes: 0,
-          failures: 0,
-          lastAssignedAt: null,
-          cooldownUntil: 0,
-          disabled: false,
-        });
+      const discoveredMap = new Map(discovery.accounts.map((entry) => [entry.id, entry]));
+      const initialCount = this.slots.length;
+
+      // Remove slots whose file no longer exists or is no longer discovered
+      const remainingSlots = [];
+      for (const slot of this.slots) {
+        const existsOnDisk = slot.accountPath && fs.existsSync(slot.accountPath);
+        if (existsOnDisk && discoveredMap.has(slot.id)) {
+          remainingSlots.push(slot);
+        } else if (slot.provider) {
+          try {
+            if (typeof slot.provider.close === "function") await slot.provider.close();
+            else if (typeof slot.provider.aclose === "function") await slot.provider.aclose();
+          } catch {
+            // Ignore provider cleanup error
+          }
+        }
       }
+      this.slots = remainingSlots;
+      const removedCount = initialCount - this.slots.length;
+
+      // Add newly discovered accounts
+      const existingIds = new Set(this.slots.map((slot) => slot.id));
+      let addedCount = 0;
+      for (const entry of discovery.accounts) {
+        if (!existingIds.has(entry.id)) {
+          this.slots.push({
+            ...entry,
+            slot: this.slots.length,
+            provider: null,
+            providerPromise: null,
+            busy: false,
+            assignments: 0,
+            successes: 0,
+            failures: 0,
+            lastAssignedAt: null,
+            cooldownUntil: 0,
+            disabled: false,
+          });
+          addedCount += 1;
+        }
+      }
+
+      // Re-index slots
+      this.slots.forEach((slot, index) => {
+        slot.slot = index;
+      });
+
       this.discovery = discovery;
-      return newEntries.length;
+      return { added: addedCount, removed: removedCount };
     });
-    if (added > 0) this._wakeWaiters();
+
+    if (added > 0 || removed > 0) this._wakeWaiters();
     this.diagnostic("account_pool_refreshed", {
       added,
+      removed,
       configured: this.slots.length,
       discovered: discovery.discovered,
       invalid: discovery.invalid.length,
