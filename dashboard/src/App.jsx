@@ -345,10 +345,10 @@ function App() {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               title={!sidebarOpen ? item.label : undefined}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all text-sm font-medium ${
+              className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all text-sm font-medium focus:outline-none focus:ring-0 select-none outline-none ${
                 activeTab === item.id
                   ? 'bg-gradient-to-r from-purple-600/30 to-blue-600/20 text-purple-300 border border-purple-500/30 shadow-md shadow-purple-900/20'
-                  : 'text-gray-400 hover:text-gray-100 hover:bg-[#1a1a26]'
+                  : 'text-gray-400 hover:text-gray-100 hover:bg-[#1a1a26] border border-transparent'
               } ${!sidebarOpen ? 'justify-center px-0' : ''}`}
             >
               <item.icon size={20} className="shrink-0" />
