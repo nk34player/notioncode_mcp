@@ -73,6 +73,9 @@ function sendJson(response, status, body, headers = {}) {
   response.writeHead(status, {
     "content-type": "application/json",
     "content-length": String(payload.length),
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
     ...headers,
   });
   response.end(payload);
@@ -838,30 +841,50 @@ export function createBridgeRequestHandler({
           return;
         }
         default: {
+          // OPTIONS preflight handler for CORS
+          if (request.method === "OPTIONS") {
+            response.writeHead(204, {
+              "access-control-allow-origin": "*",
+              "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+              "access-control-allow-headers": "content-type, authorization",
+            });
+            response.end();
+            return;
+          }
           // DELETE /v1/accounts/:id — remove account file and reload pool
           if (request.method === "DELETE" && requestPath.startsWith("/v1/accounts/")) {
-            const accountId = decodeURIComponent(requestPath.slice("/v1/accounts/".length));
-            if (!accountId) {
+            const target = decodeURIComponent(requestPath.slice("/v1/accounts/".length)).trim();
+            if (!target) {
               sendJson(response, 400, { error: "account id is required" });
               return;
             }
-            // find the slot by id
-            const slot = accountPool?.status().accounts.find((a) => a.id === accountId);
-            if (!slot) {
+            const poolAccounts = accountPool?.status().accounts || [];
+            const slot = poolAccounts.find((a) =>
+              a.id === target ||
+              a.workspace_id === target ||
+              a.accountPath === target ||
+              path.basename(a.accountPath) === target ||
+              String(a.slot) === target,
+            );
+
+            let filePathToRemove = slot?.accountPath;
+            if (!filePathToRemove) {
+              const candidate = path.join(accountHome, "accounts", target.endsWith(".json") ? target : `${target}.json`);
+              if (fs.existsSync(candidate)) filePathToRemove = candidate;
+            }
+
+            if (filePathToRemove && fs.existsSync(filePathToRemove)) {
+              fs.rmSync(filePathToRemove, { force: true });
+              diagnostic("account_removed", { account_id: target, path: filePathToRemove });
+            } else if (!slot) {
               sendJson(response, 404, { error: "Account not found" });
               return;
             }
-            const accountFilePath = slot.accountPath;
-            if (!accountFilePath || !fs.existsSync(accountFilePath)) {
-              sendJson(response, 404, { error: "Account file not found on disk" });
-              return;
-            }
-            fs.rmSync(accountFilePath, { force: true });
-            diagnostic("account_removed", { account_id: accountId, path: accountFilePath });
+
             if (typeof accountPool?.refresh === "function") {
               await accountPool.refresh();
             }
-            sendJson(response, 200, { ok: true, removed: accountId });
+            sendJson(response, 200, { ok: true, removed: target });
             return;
           }
           if (request.method === "GET" && (requestPath === "/dashboard" || requestPath.startsWith("/dashboard/") || requestPath.startsWith("/assets/"))) {

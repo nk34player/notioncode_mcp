@@ -234,9 +234,16 @@ function App() {
     }
   };
 
-  const handleDeleteAccount = async (accountId) => {
-    if (!accountId) return;
+  const handleDeleteAccount = async (acc) => {
+    const accountId = typeof acc === 'object'
+      ? (acc.id || acc.workspace_id || (acc.accountPath ? acc.accountPath.split(/[\/\\]/).pop() : null))
+      : acc;
+    if (!accountId) {
+      showNotify('error', 'Unable to resolve account ID for deletion.');
+      return;
+    }
     setDeletingId(accountId);
+    addLog('info', `Deleting account: ${accountId}`);
     try {
       let res;
       try {
@@ -250,10 +257,13 @@ function App() {
         await fetchStatus();
       } else {
         const err = await res.json().catch(() => ({}));
-        showNotify('error', 'Failed to remove account: ' + (err.error || res.status));
+        const errMsg = err.error || res.statusText || String(res.status);
+        showNotify('error', 'Failed to remove account: ' + errMsg);
+        addLog('error', 'Failed to remove account: ' + errMsg);
       }
     } catch (err) {
       showNotify('error', 'Failed to remove account: ' + err.message);
+      addLog('error', err.message);
     } finally {
       setDeletingId(null);
     }
@@ -522,12 +532,16 @@ function App() {
                         {acc.cooldown ? `Cooldown (${acc.retryAfter}s)` : acc.disabled ? 'Disabled' : 'Ready'}
                       </span>
                       <button
-                        onClick={() => handleDeleteAccount(acc.id)}
-                        disabled={deletingId === acc.id}
+                        onClick={() => handleDeleteAccount(acc)}
+                        disabled={Boolean(deletingId && [acc.id, acc.workspace_id, acc.accountPath?.split(/[\/\\]/).pop()].includes(deletingId))}
                         title="Remove account"
-                        className="p-2 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all disabled:opacity-40"
+                        className="p-2 rounded-xl text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all disabled:opacity-40 cursor-pointer"
                       >
-                        {deletingId === acc.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        {deletingId && [acc.id, acc.workspace_id, acc.accountPath?.split(/[\/\\]/).pop()].includes(deletingId) ? (
+                          <Loader2 size={14} className="animate-spin text-rose-400" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
                       </button>
                     </div>
                   </div>
