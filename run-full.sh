@@ -448,6 +448,15 @@ start_services() {
     echo "    Runtime: http://127.0.0.1:${RUNTIME_PORT}"
     echo "    Log:     ${log_file}"
     echo ""
+
+    if [[ "${OPEN_DASHBOARD:-1}" -eq 1 ]]; then
+        if command -v open >/dev/null 2>&1; then
+            open "http://127.0.0.1:${BRIDGE_PORT}/dashboard" >/dev/null 2>&1 &
+        elif command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "http://127.0.0.1:${BRIDGE_PORT}/dashboard" >/dev/null 2>&1 &
+        fi
+    fi
+
     echo "To use with Claude Code CLI:"
     echo "  export ANTHROPIC_BASE_URL=http://127.0.0.1:${BRIDGE_PORT}"
     echo "  export ANTHROPIC_API_KEY=sk-notioncode"
@@ -494,14 +503,7 @@ launch_dashboard() {
         echo "[✓] Dashboard is up to date; skipping rebuild."
     fi
 
-    start_services
-
-    # Open dashboard URL only after server listeners are ready
-    if command -v open >/dev/null 2>&1; then
-        open "http://127.0.0.1:${bridge_port}/dashboard" &
-    elif command -v xdg-open >/dev/null 2>&1; then
-        xdg-open "http://127.0.0.1:${bridge_port}/dashboard" &
-    fi
+    OPEN_DASHBOARD=1 start_services
 }
 
 # ── Launch Dashboard ───────────────────────────────────────────────────────────

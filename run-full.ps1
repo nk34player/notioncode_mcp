@@ -273,8 +273,6 @@ function Invoke-StartServer {
         throw "Unified Node server failed to become ready. See: $LogFile"
     }
 
-    Start-Process "http://127.0.0.1:$bridgePort/dashboard"
-
     $bridgeOwner = Get-ListeningProcessId $bridgePort
     $mcpOwner    = Get-ListeningProcessId $mcpPort
     if (-not $bridgeOwner -or -not $mcpOwner -or $bridgeOwner -ne $mcpOwner) {
@@ -292,6 +290,11 @@ function Invoke-StartServer {
     Write-Host "      Bridge:  http://127.0.0.1:$bridgePort"
     Write-Host "      Runtime: http://127.0.0.1:$mcpPort"
     Write-Host "      Log:     $LogFile"
+
+    if (-not $env:NO_OPEN_DASHBOARD) {
+        Start-Process "http://127.0.0.1:$bridgePort/dashboard"
+    }
+
     if ($NoLogTail) {
         return
     }
